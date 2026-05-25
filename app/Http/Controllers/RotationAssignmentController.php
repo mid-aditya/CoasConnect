@@ -15,7 +15,7 @@ class RotationAssignmentController extends Controller
      */
     public function index()
     {
-        $assignments = RotationAssignment::with(['user', 'rotation', 'academicPeriod', 'supervisor'])->latest('start_date')->paginate(15);
+        $assignments = RotationAssignment::with(['koas', 'rotation', 'academicPeriod', 'supervisor'])->latest('start_date')->paginate(15);
         return view('admin.assignments.index', compact('assignments'));
     }
 
@@ -25,9 +25,11 @@ class RotationAssignmentController extends Controller
     public function create()
     {
         $koas = User::whereHas('role', function ($q) {
-            $q->where('name', 'Koas'); })->get();
+            $q->where('name', 'Koas');
+        })->get();
         $dosens = User::whereHas('role', function ($q) {
-            $q->where('name', 'Dosen Pembimbing'); })->get();
+            $q->where('name', 'Dosen Pembimbing');
+        })->get();
         $rotations = Rotation::all();
         $academicPeriods = AcademicPeriod::where('is_active', true)->get();
 
@@ -67,9 +69,11 @@ class RotationAssignmentController extends Controller
     public function edit(RotationAssignment $assignment)
     {
         $koas = User::whereHas('role', function ($q) {
-            $q->where('name', 'Koas'); })->get();
+            $q->where('name', 'Koas');
+        })->get();
         $dosens = User::whereHas('role', function ($q) {
-            $q->where('name', 'Dosen Pembimbing'); })->get();
+            $q->where('name', 'Dosen Pembimbing');
+        })->get();
         $rotations = Rotation::all();
         $academicPeriods = AcademicPeriod::all();
 

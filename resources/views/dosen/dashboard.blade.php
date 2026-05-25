@@ -82,7 +82,7 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <a href="#" class="text-indigo-600 hover:text-indigo-900 relative">
+                                            <a href="{{ route('logs.index') }}" class="text-indigo-600 hover:text-indigo-900 relative">
                                                 Lihat Log
                                                 @if($pendingCount > 0)
                                                     <span
