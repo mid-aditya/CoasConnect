@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
@@ -25,12 +24,7 @@ class User extends Authenticatable
         ];
     }
 
-    // Relationships
-    public function role(): HasOne
-    {
-        return $this->hasOne(Role::class);
-    }
-
+    // Relationships using Spatie permissions
     public function assignments(): HasMany
     {
         return $this->hasMany(RotationAssignment::class, "user_id");
@@ -51,10 +45,16 @@ class User extends Authenticatable
         return $this->hasMany(PatientLog::class, "user_id");
     }
 
-    // Role check accessors
+    public function userProfile(): HasMany
+    {
+        return $this->hasMany(UserProfile::class);
+    }
+
+    // Role check accessors (using Spatie HasRoles)
     public function isAdmin(): bool
     {
         return $this->hasRole("admin") ||
+            $this->hasRole("Administrator Faisal") ||
             $this->hasRole("Administrator Fakultas");
     }
 
@@ -86,5 +86,11 @@ class User extends Authenticatable
             return "dosen.dashboard";
         }
         return "koas.dashboard";
+    }
+
+    // Get primary role name
+    public function getRoleNameAttribute(): ?string
+    {
+        return $this->getRoleNames()->first();
     }
 }

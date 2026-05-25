@@ -1,65 +1,87 @@
 <?php
 
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\CoordinatorDashboardController;
+use App\Http\Controllers\DosenDashboardController;
+use App\Http\Controllers\CoasDashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PatientLogController;
+use App\Http\Controllers\RotationAssignmentController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+Route::get("/", function () {
+    return view("welcome");
 });
 
-Route::get('/dashboard', function () {
-    $role = auth()->user()->role->name ?? '';
-    if ($role == 'Administrator Fakultas')
-        return redirect()->route('admin.dashboard');
-    if ($role == 'Koordinator Program')
-        return redirect()->route('coordinator.dashboard');
-    if ($role == 'Dosen Pembimbing')
-        return redirect()->route('dosen.dashboard');
-    return redirect()->route('koas.dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get("/dashboard", function () {
+    $user = auth()->user();
 
-Route::middleware(['auth', 'role:Administrator Fakultas'])->group(function () {
-    Route::get('/admin/dashboard', function () {
-        return view('admin.dashboard');
-    })->name('admin.dashboard');
+    if ($user->isAdmin()) {
+        return redirect()->route("admin.dashboard");
+    }
+    if ($user->isCoordinator()) {
+        return redirect()->route("coordinator.dashboard");
+    }
+    if ($user->isDoctor()) {
+        return redirect()->route("dosen.dashboard");
+    }
+    return redirect()->route("koas.dashboard");
+})
+    ->middleware(["auth", "verified"])
+    ->name("dashboard");
 
-    Route::resource('admin/assignments', \App\Http\Controllers\RotationAssignmentController::class)->names([
-        'index' => 'admin.assignments.index',
-        'create' => 'admin.assignments.create',
-        'store' => 'admin.assignments.store',
-        'show' => 'admin.assignments.show',
-        'edit' => 'admin.assignments.edit',
-        'update' => 'admin.assignments.update',
-        'destroy' => 'admin.assignments.destroy',
-    ]);
+// Admin routes
+Route::middleware(["auth"])
+    ->prefix("admin")
+    ->name("admin.")
+    ->group(function () {
+        Route::get("/dashboard", [
+            AdminDashboardController::class,
+            "index",
+        ])->name("dashboard");
+        Route::resource("assignments", RotationAssignmentController::class);
+    });
+
+// Coordinator routes
+Route::middleware(["auth"])
+    ->prefix("coordinator")
+    ->name("coordinator.")
+    ->group(function () {
+        Route::get("/dashboard", [
+            CoordinatorDashboardController::class,
+            "index",
+        ])->name("dashboard");
+    });
+
+// Doctor/Dosen routes
+Route::middleware(["auth"])
+    ->prefix("dosen")
+    ->name("dosen.")
+    ->group(function () {
+        Route::get("/dashboard", [
+            DosenDashboardController::class,
+            "index",
+        ])->name("dashboard");
+    });
+
+// COAS routes
+Route::middleware(["auth"])->group(function () {
+    Route::get("/koas/dashboard", [
+        CoasDashboardController::class,
+        "index",
+    ])->name("koas.dashboard");
+    Route::resource("patients", PatientController::class);
+    Route::resource("logs", PatientLogController::class);
+    Route::get("/profile", [ProfileController::class, "edit"])->name(
+        "profile.edit",
+    );
+    Route::patch("/profile", [ProfileController::class, "update"])->name(
+        "profile.update",
+    );
+    Route::delete("/profile", [ProfileController::class, "destroy"])->name(
+        "profile.destroy",
+    );
 });
 
-Route::middleware(['auth', 'role:Koordinator Program'])->group(function () {
-    Route::get('/coordinator/dashboard', function () {
-        return view('coordinator.dashboard');
-    })->name('coordinator.dashboard');
-});
-
-Route::middleware(['auth', 'role:Dosen Pembimbing'])->group(function () {
-    Route::get('/dosen/dashboard', function () {
-        return view('dosen.dashboard');
-    })->name('dosen.dashboard');
-});
-
-Route::middleware(['auth', 'role:Koas'])->group(function () {
-    Route::get('/koas/dashboard', function () {
-        return view('koas.dashboard');
-    })->name('koas.dashboard');
-
-    Route::resource('patients', \App\Http\Controllers\PatientController::class);
-});
-
-Route::middleware('auth')->group(function () {
-    Route::resource('logs', \App\Http\Controllers\PatientLogController::class);
-
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
-
-require __DIR__ . '/auth.php';
+require __DIR__ . "/auth.php";

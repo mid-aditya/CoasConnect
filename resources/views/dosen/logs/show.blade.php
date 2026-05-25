@@ -1,125 +1,106 @@
-<x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Review Logbook: ') }} {{ $patientLog->koas->name }}
-            </h2>
-            <a href="{{ route('logs.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Kembali ke Daftar</a>
+@extends('layouts.app')
+@section('title', 'Review Log Klinis')
+
+@section('content')
+<div class="mb-6">
+    <a href="{{ route('logs.index') }}" class="text-blue-600 hover:text-blue-700 flex items-center">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Kembali ke Daftar
+    </a>
+</div>
+
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800">Review Log Klinis</h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    {{ $log->user->name ?? 'N/A' }} | {{ $log->log_date->format('d M Y') }}
+                </p>
+            </div>
+            <span class="px-3 py-1 text-sm font-semibold rounded-full
+                @if($log->status === 'reviewed') bg-green-100 text-green-700
+                @elseif($log->status === 'submitted') bg-yellow-100 text-yellow-700
+                @else bg-gray-100 text-gray-700 @endif">
+                {{ ucfirst($log->status) }}
+            </span>
         </div>
-    </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Log Details -->
-                <div class="lg:col-span-2">
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
-                        <div class="p-6 border-b border-gray-200">
-                            <h3 class="text-lg font-bold text-gray-900 mb-4">Informasi Klinis</h3>
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Ringkasan Kondisi</h3>
+                <p class="text-gray-800">{{ $log->condition_summary }}</p>
+            </div>
 
-                            <div class="grid grid-cols-2 gap-4 mb-6">
-                                <div>
-                                    <p class="text-sm text-gray-500">Tanggal Log</p>
-                                    <p class="font-medium">
-                                        {{ \Carbon\Carbon::parse($patientLog->log_date)->format('d F Y') }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Pasien</p>
-                                    <p class="font-medium">{{ $patientLog->patient->initials }}
-                                        ({{ $patientLog->patient->gender }}, {{ $patientLog->patient->age_category }})
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Rotasi</p>
-                                    <p class="font-medium">{{ $patientLog->rotation->name }}</p>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-500">Status Saat Ini</p>
-                                    <p class="font-medium capitalize">{{ $patientLog->status }}</p>
-                                </div>
-                            </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Pemeriksaan / Anamnesis</h3>
+                <p class="text-gray-800">{{ $log->key_examination }}</p>
+            </div>
 
-                            <div class="space-y-4">
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 bg-gray-50 px-3 py-1 rounded">S-O
-                                        (Subjektif-Objektif)</h4>
-                                    <p class="mt-2 text-gray-600 px-3 whitespace-pre-line">
-                                        {{ $patientLog->condition_summary }}</p>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 bg-gray-50 px-3 py-1 rounded">A
-                                        (Assessment / Diagnosis)</h4>
-                                    <p class="mt-2 text-gray-600 px-3 whitespace-pre-line">
-                                        {{ $patientLog->key_examination }}</p>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 bg-gray-50 px-3 py-1 rounded">P (Plan
-                                        / Rencana Terapi)</h4>
-                                    <p class="mt-2 text-gray-600 px-3 whitespace-pre-line">
-                                        {{ $patientLog->treatment_plan }}</p>
-                                </div>
-                                <div>
-                                    <h4 class="text-sm font-semibold text-gray-700 bg-gray-50 px-3 py-1 rounded">
-                                        Refleksi Klinis</h4>
-                                    <p class="mt-2 text-gray-600 px-3 whitespace-pre-line">
-                                        {{ $patientLog->clinical_reflection }}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Plan / Tindakan</h3>
+                <p class="text-gray-800">{{ $log->treatment_plan }}</p>
+            </div>
 
-                <!-- Review Panel -->
-                <div class="lg:col-span-1">
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg sticky top-6">
-                        <div class="p-6 border-b border-gray-200">
-                            <h3 class="text-lg font-bold text-gray-900 mb-4">Form Review Dosen</h3>
+            @if($log->procedures_performed)
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Prosedur</h3>
+                <p class="text-gray-800">{{ $log->procedures_performed }}</p>
+            </div>
+            @endif
 
-                            @if(session('success'))
-                                <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 text-sm"
-                                    role="alert">
-                                    {{ session('success') }}
-                                </div>
-                            @endif
-
-                            <form action="{{ route('logs.update', $patientLog) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-
-                                <div class="mb-4">
-                                    <label for="status" class="block text-sm font-medium text-gray-700">Keputusan
-                                        Review</label>
-                                    <select id="status" name="status"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        required>
-                                        <option value="" disabled selected>Pilih Aksi...</option>
-                                        <option value="approved" {{ $patientLog->status == 'approved' ? 'selected' : '' }}>Setujui (Approve)</option>
-                                        <option value="revised" {{ $patientLog->status == 'revised' ? 'selected' : '' }}>
-                                            Minta Revisi (Revise)</option>
-                                    </select>
-                                    @error('status') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-                                <div class="mb-4">
-                                    <label for="supervisor_comment"
-                                        class="block text-sm font-medium text-gray-700">Catatan/Komentar
-                                        (Opsional)</label>
-                                    <textarea id="supervisor_comment" name="supervisor_comment" rows="4"
-                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                        placeholder="Berikan feedback untuk koas terkait laporan kasus ini...">{{ old('supervisor_comment', $patientLog->supervisor_comment) }}</textarea>
-                                    @error('supervisor_comment') <span
-                                    class="text-red-500 text-xs">{{ $message }}</span> @enderror
-                                </div>
-
-                                <button type="submit"
-                                    class="w-full inline-flex justify-center items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring ring-blue-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                    Kirim Review
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+            <div>
+                <h3 class="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Refleksi Klinis</h3>
+                <p class="text-gray-800">{{ $log->clinical_reflection }}</p>
             </div>
         </div>
     </div>
-</x-app-layout>
+
+    @if($log->status === 'submitted')
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">Form Review</h3>
+
+        <form action="{{ route('logs.update', $log) }}" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Komentar / Feedback</label>
+                <textarea name="supervisor_comment" rows="4" required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="例: Good history taking">{{ old('supervisor_comment', $log->supervisor_comment) }}</textarea>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status Review</label>
+                <div class="flex space-x-4">
+                    <label class="flex items-center">
+                        <input type="radio" name="status" value="reviewed" checked
+                            class="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500">
+                        <span class="ml-2 text-sm text-gray-600">Setujui</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="radio" name="status" value="revision_requested"
+                            class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500">
+                        <span class="ml-2 text-sm text-gray-600">Minta Revisi</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                    Submit Review
+                </button>
+            </div>
+        </form>
+    </div>
+    @elseif($log->supervisor_comment)
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 class="text-sm font-medium text-blue-700 uppercase tracking-wider mb-2">Komentar Supervisor</h3>
+        <p class="text-blue-800">{{ $log->supervisor_comment }}</p>
+    </div>
+    @endif
+</div>
+@endsection
