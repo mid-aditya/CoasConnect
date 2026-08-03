@@ -1,24 +1,40 @@
-*.log
+# --- OS / Editor ---
 .DS_Store
-.env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-/.fleet
-/.idea
-/.nova
-/.phpunit.cache
-/.vscode
-/.zed
-/auth.json
-/node_modules
-/public/build
-/public/hot
-/public/storage
-/storage/*.key
-/storage/pail
-/vendor
-Homestead.json
-Homestead.yaml
 Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.code-workspace
+
+# --- Env files ---
+.env
+.env.*
+!.env.example
+
+# --- Backend (Go) ---
+backend/bin/
+backend/data/
+backend/coasconnect.db
+backend/coasconnect.db-*
+*.test
+
+# --- Frontend (React web) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+.vite/
+
+# --- Mobile (React Native / Expo) ---
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+
+# --- Logs / Misc ---
+*.log
+npm-debug.log*

@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Palet "CoasConnect" — samudra dalam & pasir pantai */
+  --color-ink-950: #08151f;
+  --color-ink-900: #0b1b28;
+  --color-ink-800: #123a4d;
+  --color-ocean-700: #14607c;
+  --color-aqua-500: #22c7b0;
+  --color-aqua-400: #3ee0c8;
+  --color-coral-500: #ff7a59;
+  --color-coral-400: #ff937a;
+  --color-sand-100: #f6f1e7;
+  --color-sand-200: #efe6d4;
+  --color-mist-100: #e6f0f3;
+
+  --animate-pulse-node: pulse-node 2.4s ease-in-out infinite;
+  --animate-dash-flow: dash-flow 9s linear infinite;
+}
+
+@keyframes pulse-node {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.35); }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -240; }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-sand-100);
+  color: var(--color-ink-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-aqua-500);
+  color: var(--color-ink-950);
+}
+
+/* Grid motif untuk section */
+.motif-grid {
+  background-image:
+    linear-gradient(to right, rgba(34, 199, 176, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(34, 199, 176, 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+}

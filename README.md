@@ -1,59 +1,149 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<div align="center">
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+# 🌊 CoasConnect
 
-## About Laravel
+**Menghubungkan komunitas pesisir dalam satu jaringan.**
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+</div>
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Monorepo aplikasi CoasConnect — platform konektivitas untuk nelayan, koperasi,
+dan pasar pesisir.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 🏗️ Arsitektur
 
-## Learning Laravel
+| Folder     | Stack                                    | Deskripsi                          |
+| ---------- | ---------------------------------------- | ---------------------------------- |
+| `backend/` | **Go** (Chi) · SQLite (modernc, tanpa CGO) | REST API JSON                      |
+| `frontend/`| **React** (Vite + TypeScript + Tailwind v4) | Web app                            |
+| `mobile/`  | **React Native** (Expo + TypeScript)      | Aplikasi mobile                    |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```
+┌────────────┐     HTTP/JSON      ┌──────────────┐      ┌──────────────┐
+│  frontend  │ ─────────────────▶ │  backend     │      │              │
+│  (React)   │ ◀───────────────── │  (Go + Chi)  │─────▶│   SQLite     │
+└────────────┘                    └──────┬───────┘      │ (coasconnect.db)│
+┌────────────┐     HTTP/JSON      ┌──────┴───────┐      └──────────────┘
+│  mobile    │ ─────────────────▶ │  backend     │
+│  (Expo)    │ ◀───────────────── │  (sama)      │
+└────────────┘                    └──────────────┘
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+> **Catatan:** Versi Laravel/PHP sebelumnya diarsipkan di branch
+> `archive/laravel`.
 
-## Laravel Sponsors
+## 🔧 Prasyarat
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **Go 1.22+** — untuk backend
+- **Node.js 20+ & npm** — untuk frontend & mobile
+- **Expo Go** (app di HP) atau emulator — untuk menjalankan mobile
 
-### Premium Partners
+## 🚀 Menjalankan
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 1. Backend (Go)
 
-## Contributing
+```bash
+cd backend
+cp .env.example .env   # opsional, semua punya default
+go mod tidy            # unduh dependency (membuat go.sum)
+go run ./cmd/api
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+API tersedia di `http://localhost:8080`.
 
-## Code of Conduct
+| Method | Endpoint          | Fungsi            |
+| ------ | ----------------- | ----------------- |
+| GET    | `/api/v1/health`  | Health check      |
+| GET    | `/api/v1/users`   | Daftar user       |
+| POST   | `/api/v1/users`   | Tambah user       |
+| GET    | `/api/v1/users/{id}` | Detail user    |
+| PUT    | `/api/v1/users/{id}` | Ubah user      |
+| DELETE | `/api/v1/users/{id}` | Hapus user    |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel.
 
-## Security Vulnerabilities
+### 2. Frontend (React web)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-## License
+Buka `http://localhost:5173`. Vite mem-proxy `/api` ke backend
+(`http://localhost:8080`) sehingga tidak perlu konfigurasi tambahan.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### 3. Mobile (React Native / Expo)
+
+```bash
+cd mobile
+npm install
+npx expo start
+```
+
+Scan QR code dengan **Expo Go** di HP (atau tekan `a` untuk emulator Android).
+
+> ⚠️ **Penting:** Saat diuji di HP fisik, `localhost` mengacu ke HP itu
+> sendiri. Ubah `API_URL` di `mobile/src/api/client.ts` menjadi IP LAN
+> komputer Anda, mis. `http://192.168.1.10:8080`, dan pastikan HP serta
+> komputer berada di jaringan yang sama. Jalankan backend dengan
+> `go run ./cmd/api` (secara default listen di semua interface `:8080`).
+
+## 📦 Build produksi
+
+```bash
+# Frontend
+cd frontend && npm run build   # output di frontend/dist
+
+# Mobile
+cd mobile && npx expo export   # build bundle JS (native build via EAS)
+```
+
+## 🧪 Verifikasi
+
+```bash
+# Backend — butuh Go
+cd backend && go vet ./... && go build ./...
+
+# Frontend
+cd frontend && npm run build   # termasuk typecheck (tsc -b)
+
+# Mobile
+cd mobile && npx tsc --noEmit
+```
+
+## 📁 Struktur repo
+
+```
+coasconnect/
+├── backend/
+│   ├── cmd/api/main.go          # entry point
+│   └── internal/
+│       ├── config/              # konfigurasi env
+│       ├── database/            # koneksi + migrasi SQLite
+│       ├── handlers/            # handler HTTP (health, user)
+│       ├── middleware/          # logger, recoverer, CORS
+│       ├── models/              # model data
+│       └── router/              # route chi
+├── frontend/
+│   └── src/
+│       ├── api/client.ts        # klien API
+│       └── components/          # komponen React
+├── mobile/
+│   └── src/
+│       ├── api/client.ts        # klien API
+│       └── theme.ts             # design token
+└── README.md
+```
+
+## 🛣️ Roadmap singkat
+
+- [x] Backend Go + SQLite (CRUD user, health check)
+- [x] Frontend React (landing + demo CRUD end-to-end)
+- [x] Mobile React Native (Expo) (status API + CRUD)
+- [ ] Autentikasi (JWT)
+- [ ] Fitur domain: harga pasar, logistik, koperasi
+- [ ] Deploy (Railway / Render / VPS) + CI/CD
+
+---
+
+Dibuat dengan Go · React · React Native · ❤️
