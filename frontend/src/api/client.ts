@@ -1,6 +1,19 @@
 // Klien API untuk backend Go CoasConnect.
 // Selama development, Vite mem-proxy /api ke http://localhost:8080.
 
+// ponytail: token disimpan di localStorage (praktis untuk dev/demo).
+// Saat produksi, pindah ke httpOnly cookie + CSRF agar tak bisa diakses script lain.
+const TOKEN_KEY = 'coasconnect_token'
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+export function setToken(token: string | null) {
+  if (token) localStorage.setItem(TOKEN_KEY, token)
+  else localStorage.removeItem(TOKEN_KEY)
+}
+
 export interface Health {
   status: string
   service: string
@@ -16,9 +29,17 @@ export interface User {
   updated_at: string
 }
 
+export interface AuthResponse {
+  data: { user: User; token: string }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getToken()
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...init,
   })
 
@@ -36,6 +57,20 @@ export function getHealth(): Promise<Health> {
 
 export function getUsers(): Promise<{ data: User[] }> {
   return request<{ data: User[] }>('/api/v1/users')
+}
+
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export function register(name: string, email: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/v1/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password }),
+  })
 }
 
 export function createUser(input: { name: string; email: string }): Promise<{ data: User }> {

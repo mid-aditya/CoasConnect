@@ -53,13 +53,19 @@ API tersedia di `http://localhost:8080`.
 | Method | Endpoint          | Fungsi            |
 | ------ | ----------------- | ----------------- |
 | GET    | `/api/v1/health`  | Health check      |
-| GET    | `/api/v1/users`   | Daftar user       |
-| POST   | `/api/v1/users`   | Tambah user       |
-| GET    | `/api/v1/users/{id}` | Detail user    |
-| PUT    | `/api/v1/users/{id}` | Ubah user      |
-| DELETE | `/api/v1/users/{id}` | Hapus user    |
+| POST   | `/api/v1/auth/register` | Daftar akun + terbitkan token JWT |
+| POST   | `/api/v1/auth/login`    | Login + terbitkan token JWT |
+| GET    | `/api/v1/users`   | Daftar user *(butuh token)* |
+| POST   | `/api/v1/users`   | Tambah user *(butuh token)* |
+| GET    | `/api/v1/users/{id}` | Detail user *(butuh token)* |
+| PUT    | `/api/v1/users/{id}` | Ubah user *(butuh token)* |
+| DELETE | `/api/v1/users/{id}` | Hapus user *(butuh token)* |
 
 Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel.
+
+> **Autentikasi:** semua endpoint `/users` butuh header `Authorization: Bearer
+> <token>`. Token didapat dari `/auth/register` atau `/auth/login`. Set env
+> `JWT_SECRET` dengan nilai unik sebelum deploy (default hanya untuk dev).
 
 ### 2. Frontend (React web)
 
@@ -138,12 +144,11 @@ coasconnect/
 ## 🛣️ Roadmap singkat
 
 - [x] Backend Go + SQLite (CRUD user, health check)
+- [x] Autentikasi (JWT) — register/login, route user dilindungi
 - [x] Frontend React (landing + demo CRUD end-to-end)
 - [x] Mobile React Native (Expo) (status API + CRUD)
 - [ ] Autentikasi (JWT)
 - [ ] Fitur domain: harga pasar, logistik, koperasi
-- [ ] Deploy (Railway / Render / VPS) + CI/CD
-
 ---
 
 Dibuat dengan Go · React · React Native · ❤️

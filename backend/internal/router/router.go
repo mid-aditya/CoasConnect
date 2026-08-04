@@ -26,16 +26,25 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 
 	healthHandler := handlers.NewHealthHandler()
 	userHandler := handlers.NewUserHandler(db)
+	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret, cfg.TokenTTL)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.Check)
 
-		r.Route("/users", func(r chi.Router) {
-			r.Get("/", userHandler.List)
-			r.Post("/", userHandler.Create)
-			r.Get("/{id}", userHandler.Get)
-			r.Put("/{id}", userHandler.Update)
-			r.Delete("/{id}", userHandler.Delete)
+		r.Post("/auth/register", authHandler.Register)
+		r.Post("/auth/login", authHandler.Login)
+
+		// Semua route user butuh autentikasi.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Auth(cfg.JWTSecret))
+
+			r.Route("/users", func(r chi.Router) {
+				r.Get("/", userHandler.List)
+				r.Post("/", userHandler.Create)
+				r.Get("/{id}", userHandler.Get)
+				r.Put("/{id}", userHandler.Update)
+				r.Delete("/{id}", userHandler.Delete)
+			})
 		})
 	})
 

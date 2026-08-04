@@ -80,7 +80,7 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, _ := res.LastInsertId()
-	u, ok := h.getByID(r, id)
+	u, ok := getUserByID(h.db, r, id)
 	if !ok {
 		writeError(w, http.StatusInternalServerError, "gagal membaca user yang baru dibuat")
 		return
@@ -94,7 +94,7 @@ func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	u, found := h.getByID(r, id)
+	u, found := getUserByID(h.db, r, id)
 	if !found {
 		writeError(w, http.StatusNotFound, "user tidak ditemukan")
 		return
@@ -143,7 +143,7 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, _ := h.getByID(r, id)
+	u, _ := getUserByID(h.db, r, id)
 	writeJSON(w, http.StatusOK, map[string]any{"data": u})
 }
 
@@ -169,9 +169,9 @@ func (h *UserHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"message": "user berhasil dihapus"})
 }
 
-func (h *UserHandler) getByID(r *http.Request, id int64) (models.User, bool) {
+func getUserByID(db *sql.DB, r *http.Request, id int64) (models.User, bool) {
 	var u models.User
-	err := h.db.QueryRowContext(r.Context(),
+	err := db.QueryRowContext(r.Context(),
 		"SELECT id, name, email, created_at, updated_at FROM users WHERE id = ?", id).
 		Scan(&u.ID, &u.Name, &u.Email, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { createUser, deleteUser, getUsers, type User } from '../api/client'
 
-export default function UserManager() {
+export default function UserManager({ onLogout }: { onLogout: () => void }) {
   const [users, setUsers] = useState<User[]>([])
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -136,12 +136,18 @@ export default function UserManager() {
                     {users.length}
                   </span>
                 </span>
-                <button
-                  onClick={load}
-                  className="text-xs text-ink-900/40 hover:text-aqua-500 transition-colors"
-                >
-                  Muat ulang
-                </button>
+                				<button
+                				  onClick={load}
+                				  className="text-xs text-ink-900/40 hover:text-aqua-500 transition-colors"
+                				>
+                				  Muat ulang
+                				</button>
+                				<button
+                				  onClick={onLogout}
+                				  className="text-xs text-ink-900/40 hover:text-coral-500 transition-colors"
+                				>
+                				  Keluar
+                				</button>
               </div>
 
               {users.length === 0 ? (

@@ -6,6 +6,18 @@
 // Jalankan backend dengan flag --host: go run ./cmd/api  (server listen :8080)
 export const API_URL = 'http://localhost:8080'
 
+// ponytail: token hanya di memori — hilang saat app ditutup. Cukup untuk dev;
+// upgrade ke expo-secure-store saat perlu persist login antar sesi.
+let token: string | null = null
+
+export function getToken(): string | null {
+  return token
+}
+
+export function setToken(t: string | null) {
+  token = t
+}
+
 export interface Health {
   status: string
   service: string
@@ -21,9 +33,16 @@ export interface User {
   updated_at: string
 }
 
+export interface AuthResponse {
+  data: { user: User; token: string }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
     ...init,
   })
 
@@ -41,6 +60,20 @@ export function getHealth(): Promise<Health> {
 
 export function getUsers(): Promise<{ data: User[] }> {
   return request<{ data: User[] }>('/api/v1/users')
+}
+
+export function login(email: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export function register(name: string, email: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>('/api/v1/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, email, password }),
+  })
 }
 
 export function createUser(input: { name: string; email: string }): Promise<{ data: User }> {

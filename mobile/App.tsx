@@ -18,13 +18,17 @@ import {
   createUser,
   deleteUser,
   getHealth,
+  getToken,
   getUsers,
+  setToken,
   type Health,
   type User,
 } from './src/api/client'
 import { colors } from './src/theme'
+import AuthScreen from './src/AuthScreen'
 
 export default function App() {
+  const [authed, setAuthed] = useState(() => getToken() !== null)
   const [health, setHealth] = useState<Health | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const [name, setName] = useState('')
@@ -92,6 +96,15 @@ export default function App() {
     ])
   }
 
+  const onLogout = () => {
+    setToken(null)
+    setAuthed(false)
+  }
+
+  if (!authed) {
+    return <AuthScreen onAuthed={() => setAuthed(true)} />
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -115,6 +128,9 @@ export default function App() {
             </Text>
             <Text style={styles.tagline}>Jaringan komunitas pesisir</Text>
           </View>
+          <Pressable onPress={onLogout} hitSlop={8}>
+            <Text style={styles.logout}>Keluar</Text>
+          </Pressable>
         </View>
 
         {/* Status API */}
@@ -251,6 +267,11 @@ const styles = StyleSheet.create({
     color: colors.textDim,
     fontSize: 13,
     marginTop: 2,
+  },
+  logout: {
+    color: colors.coral400,
+    fontSize: 13,
+    fontWeight: '600',
   },
   card: {
     borderRadius: 16,
