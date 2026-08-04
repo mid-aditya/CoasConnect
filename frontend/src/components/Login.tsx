@@ -39,15 +39,15 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     <section id="anggota" className="py-16 bg-sand-100">
       <div className="mx-auto max-w-md px-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-coral-500 text-center">
-          Autentikasi
+          Monitoring pasien
         </p>
         <h2 className="mt-2 font-display font-700 text-3xl text-ink-900 text-center">
-          {mode === 'login' ? 'Masuk ke jaringan' : 'Daftar ke jaringan'}
+          {mode === 'login' ? 'Masuk' : 'Daftar sebagai pasien'}
         </h2>
         <p className="mt-3 text-center text-ink-900/60 leading-relaxed">
           {mode === 'login'
-            ? 'Login untuk mengelola anggota jaringan.'
-            : 'Buat akun — langsung terhubung ke jaringan.'}
+            ? 'Masuk untuk membuka dan memantau kasus perawatan.'
+            : 'Registrasi membuka akun pasien. Akun dokter koas & spesialis dikelola penyelenggara.'}
         </p>
 
         <form

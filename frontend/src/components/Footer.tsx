@@ -8,17 +8,17 @@ export default function Footer() {
               Coas<span className="text-aqua-400">Connect</span>
             </p>
             <p className="mt-1 text-sm text-sand-100/50">
-              Menghubungkan komunitas pesisir dalam satu jaringan.
+              Menghubungkan pasien dan dokter koas dalam satu alur perawatan.
             </p>
           </div>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-sand-100/60">
             <a href="#status" className="hover:text-aqua-400 transition-colors">Status</a>
-            <a href="#anggota" className="hover:text-aqua-400 transition-colors">Anggota</a>
-            <a href="#fitur" className="hover:text-aqua-400 transition-colors">Fitur</a>
+            <a href="#kasus" className="hover:text-aqua-400 transition-colors">Kasus</a>
+            <a href="#fitur" className="hover:text-aqua-400 transition-colors">Cara kerja</a>
           </div>
         </div>
         <div className="mt-10 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between gap-2 text-xs text-sand-100/35">
-          <p>© {new Date().getFullYear()} CoasConnect. Dibuat untuk komunitas pesisir.</p>
+          <p>© {new Date().getFullYear()} CoasConnect. Dibuat untuk layanan kesehatan.</p>
           <p>Go · React · React Native</p>
         </div>
       </div>

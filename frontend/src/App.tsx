@@ -1,15 +1,27 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import ApiStatus from './components/ApiStatus'
-import UserManager from './components/UserManager'
+import Dashboard from './components/Dashboard'
 import Login from './components/Login'
 import Features from './components/Features'
 import Footer from './components/Footer'
-import { getToken, setToken } from './api/client'
+import { getMe, getToken, setToken, type User } from './api/client'
 
 export default function App() {
-  const [authed, setAuthed] = useState(() => getToken() !== null)
+  const [user, setUser] = useState<User | null>(null)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    if (!getToken()) {
+      setChecking(false)
+      return
+    }
+    getMe()
+      .then((res) => setUser(res.data))
+      .catch(() => setToken(null))
+      .finally(() => setChecking(false))
+  }, [])
 
   return (
     <div className="min-h-screen bg-sand-100">
@@ -17,16 +29,23 @@ export default function App() {
       <main>
         <Hero />
         <ApiStatus />
-        {authed ? (
-          <UserManager
-            onLogout={() => {
-              setToken(null)
-              setAuthed(false)
-            }}
-          />
-        ) : (
-          <Login onAuthed={() => setAuthed(true)} />
-        )}
+        {!checking &&
+          (user ? (
+            <Dashboard
+              user={user}
+              onLogout={() => {
+                setToken(null)
+                setUser(null)
+              }}
+            />
+          ) : (
+            <Login
+              onAuthed={async () => {
+                const res = await getMe()
+                setUser(res.data)
+              }}
+            />
+          ))}
         <Features />
       </main>
       <Footer />

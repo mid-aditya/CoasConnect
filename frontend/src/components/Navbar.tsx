@@ -19,10 +19,10 @@ export default function Navbar() {
 
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-sand-100/70">
           <a href="#status" className="hover:text-aqua-400 transition-colors">Status API</a>
-          <a href="#anggota" className="hover:text-aqua-400 transition-colors">Anggota</a>
-          <a href="#fitur" className="hover:text-aqua-400 transition-colors">Fitur</a>
+          <a href="#kasus" className="hover:text-aqua-400 transition-colors">Kasus</a>
+          <a href="#fitur" className="hover:text-aqua-400 transition-colors">Cara kerja</a>
           <a
-            href="#anggota"
+            href="#kasus"
             className="px-4 py-2 rounded-full bg-aqua-500 text-ink-950 font-semibold hover:bg-aqua-400 transition-colors"
           >
             Mulai

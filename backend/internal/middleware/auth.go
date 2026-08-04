@@ -12,9 +12,12 @@ import (
 
 type ctxKey int
 
-const userIDKey ctxKey = 0
+const (
+	userIDKey ctxKey = iota
+	userRoleKey
+)
 
-// Auth memverifikasi token JWT (Bearer) dan menyimpan user id ke context.
+// Auth memverifikasi token JWT (Bearer), lalu menyimpan id + role user ke context.
 func Auth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +49,15 @@ func Auth(secret string) func(http.Handler) http.Handler {
 				return
 			}
 
+			role := ""
+			if claims, ok := tok.Claims.(jwt.MapClaims); ok {
+				if s, ok := claims["role"].(string); ok {
+					role = s
+				}
+			}
+
 			ctx := context.WithValue(r.Context(), userIDKey, id)
+			ctx = context.WithValue(ctx, userRoleKey, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -56,6 +67,31 @@ func Auth(secret string) func(http.Handler) http.Handler {
 func UserID(ctx context.Context) int64 {
 	id, _ := ctx.Value(userIDKey).(int64)
 	return id
+}
+
+// UserRole mengambil role user terautentikasi dari context.
+func UserRole(ctx context.Context) string {
+	role, _ := ctx.Value(userRoleKey).(string)
+	return role
+}
+
+// RequireRole menolak akses jika role user tidak termasuk yang diizinkan.
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+	allowed := map[string]bool{}
+	for _, r := range roles {
+		allowed[r] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !allowed[UserRole(r.Context())] {
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(http.StatusForbidden)
+				_, _ = w.Write([]byte(`{"error":"akses ditolak"}`))
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func writeUnauthorized(w http.ResponseWriter) {

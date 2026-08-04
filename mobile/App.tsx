@@ -15,36 +15,57 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import {
   API_URL,
-  createUser,
-  deleteUser,
+  createAppointment,
+  createCase,
+  getAppointments,
+  getCases,
   getHealth,
+  getKoas,
+  getMe,
   getToken,
-  getUsers,
   setToken,
+  type Appointment,
+  type CaseView,
   type Health,
+  type Koas,
   type User,
 } from './src/api/client'
 import { colors } from './src/theme'
 import AuthScreen from './src/AuthScreen'
 
+const STATUS_COLOR: Record<string, string> = {
+  aktif: colors.aqua400,
+  pulih: colors.coral400,
+  selesai: colors.textDim,
+}
+
+const fmt = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+
 export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null)
+  const [me, setMe] = useState<User | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
-  const [users, setUsers] = useState<User[]>([])
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
+  const [cases, setCases] = useState<CaseView[]>([])
+  const [koas, setKoas] = useState<Koas[]>([])
+  const [selected, setSelected] = useState<CaseView | null>(null)
+  const [appts, setAppts] = useState<Appointment[]>([])
+
+  const [koasId, setKoasId] = useState<number | null>(null)
+  const [complaint, setComplaint] = useState('')
+  const [when, setWhen] = useState('')
+  const [apptWhen, setApptWhen] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const [h, u] = await Promise.all([getHealth(), getUsers()])
+      const [h, c] = await Promise.all([getHealth(), getCases()])
       setHealth(h)
-      setUsers(u.data)
+      setCases(c.data)
     } catch {
       setHealth(null)
-      setUsers([])
+      setCases([])
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -52,53 +73,74 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (!authed) return
+    getMe()
+      .then((r) => setMe(r.data))
+      .catch(() => {})
+    getKoas()
+      .then((r) => setKoas(r.data))
+      .catch(() => {})
     load()
-  }, [load])
+  }, [authed, load])
 
   const onRefresh = () => {
     setRefreshing(true)
     load()
   }
 
-  const onSubmit = async () => {
-    if (!name.trim() || !email.trim()) {
-      Alert.alert('Form belum lengkap', 'Nama dan email wajib diisi.')
+  const onLogout = () => {
+    setToken(null)
+    setAuthed(false)
+    setMe(null)
+    setSelected(null)
+  }
+
+  const onSubmitCase = async () => {
+    if (!koasId || !complaint.trim() || !when.trim()) {
+      Alert.alert('Form belum lengkap', 'Pilih dokter koas, tulis keluhan, dan isi jadwal.')
       return
     }
     setSaving(true)
     try {
-      await createUser({ name: name.trim(), email: email.trim() })
-      setName('')
-      setEmail('')
+      const res = await createCase({
+        koas_id: koasId,
+        complaint: complaint.trim(),
+        scheduled_at: new Date(when.trim()).toISOString(),
+      })
+      setComplaint('')
+      setWhen('')
+      setSelected(res.data)
       await load()
+      await openCase(res.data)
     } catch (e) {
-      Alert.alert('Gagal menyimpan', e instanceof Error ? e.message : 'Terjadi kesalahan.')
+      Alert.alert('Gagal membuka kasus', e instanceof Error ? e.message : 'Terjadi kesalahan.')
     } finally {
       setSaving(false)
     }
   }
 
-  const onDelete = (u: User) => {
-    Alert.alert('Hapus anggota?', `${u.name} akan dihapus dari jaringan.`, [
-      { text: 'Batal', style: 'cancel' },
-      {
-        text: 'Hapus',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteUser(u.id)
-            await load()
-          } catch (e) {
-            Alert.alert('Gagal menghapus', e instanceof Error ? e.message : 'Terjadi kesalahan.')
-          }
-        },
-      },
-    ])
+  const openCase = async (c: CaseView) => {
+    setSelected(c)
+    try {
+      const res = await getAppointments(c.id)
+      setAppts(res.data)
+    } catch {
+      setAppts([])
+    }
   }
 
-  const onLogout = () => {
-    setToken(null)
-    setAuthed(false)
+  const onSubmitAppt = async () => {
+    if (!selected || !apptWhen.trim()) return
+    setSaving(true)
+    try {
+      await createAppointment(selected.id, new Date(apptWhen.trim()).toISOString())
+      setApptWhen('')
+      await openCase(selected)
+    } catch (e) {
+      Alert.alert('Gagal membuat janji temu', e instanceof Error ? e.message : 'Terjadi kesalahan.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (!authed) {
@@ -126,7 +168,9 @@ export default function App() {
             <Text style={styles.brand}>
               Coas<Text style={styles.brandAccent}>Connect</Text>
             </Text>
-            <Text style={styles.tagline}>Jaringan komunitas pesisir</Text>
+            <Text style={styles.tagline}>
+              {me ? `${me.name} · ${me.role}` : 'Monitoring pasien · dokter koas'}
+            </Text>
           </View>
           <Pressable onPress={onLogout} hitSlop={8}>
             <Text style={styles.logout}>Keluar</Text>
@@ -157,68 +201,134 @@ export default function App() {
           )}
         </View>
 
-        {/* Form tambah */}
+        {/* Form buka kasus (pasien) */}
         <View style={[styles.card, styles.lightCard]}>
-          <Text style={styles.lightTitle}>Tambah anggota</Text>
+          <Text style={styles.lightTitle}>Buat janji temu baru</Text>
+
+          <View style={styles.chips}>
+            {koas.map((k) => (
+              <Pressable
+                key={k.id}
+                onPress={() => setKoasId(k.id)}
+                style={[styles.chip, koasId === k.id && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, koasId === k.id && styles.chipTextActive]}>
+                  {k.name}
+                </Text>
+              </Pressable>
+            ))}
+            {koas.length === 0 && <Text style={styles.hint}>Belum ada dokter koas terdaftar.</Text>}
+          </View>
+
           <TextInput
             style={styles.input}
-            placeholder="Nama lengkap"
+            placeholder="Keluhan awal (cth: demam sejak 2 hari)"
             placeholderTextColor={colors.inkMuted}
-            value={name}
-            onChangeText={setName}
+            value={complaint}
+            onChangeText={setComplaint}
+            multiline
           />
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder="Jadwal temu pertama, mis. 2026-08-10T09:00"
             placeholderTextColor={colors.inkMuted}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            value={when}
+            onChangeText={setWhen}
             autoCapitalize="none"
           />
+
           <Pressable
             style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
-            onPress={onSubmit}
+            onPress={onSubmitCase}
             disabled={saving}
           >
             {saving ? (
               <ActivityIndicator color={colors.ink950} size="small" />
             ) : (
-              <Text style={styles.primaryBtnText}>Tambah ke jaringan</Text>
+              <Text style={styles.primaryBtnText}>Buka kasus</Text>
             )}
           </Pressable>
         </View>
 
-        {/* Daftar anggota */}
+        {/* Daftar kasus */}
         <View style={[styles.card, styles.lightCard]}>
           <Text style={styles.lightTitle}>
-            Anggota jaringan{' '}
-            <Text style={styles.count}>{users.length > 0 ? `· ${users.length}` : ''}</Text>
+            Kasus saya <Text style={styles.count}>{cases.length > 0 ? `· ${cases.length}` : ''}</Text>
           </Text>
 
-          {!loading && users.length === 0 ? (
-            <Text style={styles.empty}>Belum ada anggota. Tambahkan yang pertama di atas.</Text>
+          {!loading && cases.length === 0 ? (
+            <Text style={styles.empty}>Belum ada kasus. Buka kasus pertama di atas.</Text>
           ) : (
-            users.map((u) => (
-              <View key={u.id} style={styles.member}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{u.name.charAt(0).toUpperCase()}</Text>
-                </View>
-                <View style={styles.memberCopy}>
-                  <Text style={styles.memberName} numberOfLines={1}>
-                    {u.name}
+            cases.map((c) => (
+              <Pressable key={c.id} onPress={() => openCase(c)}>
+                <View style={styles.member}>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{c.patient_name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <View style={styles.memberCopy}>
+                    <Text style={styles.memberName} numberOfLines={1}>
+                      {c.complaint}
+                    </Text>
+                    <Text style={styles.memberEmail} numberOfLines={1}>
+                      {c.koas_name} · {c.supervisor_name}
+                    </Text>
+                  </View>
+                  <Text style={[styles.statusText, { color: STATUS_COLOR[c.status] }]}>
+                    {c.status}
                   </Text>
-                  <Text style={styles.memberEmail} numberOfLines={1}>
-                    {u.email}
-                  </Text>
                 </View>
-                <Pressable onPress={() => onDelete(u)} hitSlop={8}>
-                  <Text style={styles.delete}>Hapus</Text>
-                </Pressable>
-              </View>
+              </Pressable>
             ))
           )}
         </View>
+
+        {/* Detail kasus: sesi monitoring */}
+        {selected && (
+          <View style={[styles.card, styles.lightCard]}>
+            <Text style={styles.lightTitle}>
+              Sesi monitoring · kasus #{selected.id}{' '}
+              <Text style={{ color: STATUS_COLOR[selected.status] }}>({selected.status})</Text>
+            </Text>
+            <Text style={styles.memberEmail}>
+              Ditangani {selected.koas_name} · Pembimbing {selected.supervisor_name}
+            </Text>
+
+            {appts.length === 0 && <Text style={styles.empty}>Belum ada sesi.</Text>}
+            {appts.map((a) => (
+              <View key={a.id} style={styles.member}>
+                <View style={styles.memberCopy}>
+                  <Text style={styles.memberName}>{fmt(a.scheduled_at)}</Text>
+                  <Text style={styles.memberEmail}>{a.notes || '—'}</Text>
+                </View>
+                <Text style={[styles.statusText, { color: STATUS_COLOR[a.status] }]}>{a.status}</Text>
+              </View>
+            ))}
+
+            {selected.status !== 'selesai' && (
+              <View style={styles.rowGap}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Jadwal lanjutan, mis. 2026-08-17T09:00"
+                  placeholderTextColor={colors.inkMuted}
+                  value={apptWhen}
+                  onChangeText={setApptWhen}
+                  autoCapitalize="none"
+                />
+                <Pressable
+                  style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+                  onPress={onSubmitAppt}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color={colors.ink950} size="small" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>Janji temu lanjutan</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   )
@@ -311,7 +421,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.aqua400,
   },
-  statusText: { color: colors.aqua400, fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
+  statusText: {
+    color: colors.aqua400,
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   statusOffline: {
     color: colors.coral400,
     fontSize: 12,
@@ -330,6 +445,32 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   count: { color: colors.ocean700 },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: 'rgba(11, 27, 40, 0.12)',
+  },
+  chipActive: {
+    backgroundColor: colors.aqua500,
+    borderColor: colors.aqua500,
+  },
+  chipText: {
+    color: colors.ink900,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  chipTextActive: {
+    color: colors.ink950,
+  },
   input: {
     backgroundColor: colors.white,
     borderRadius: 12,
@@ -356,6 +497,10 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  hint: {
+    color: colors.inkMuted,
+    fontSize: 13,
   },
   member: {
     flexDirection: 'row',
@@ -389,9 +534,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  delete: {
-    color: colors.coral500,
-    fontSize: 13,
-    fontWeight: '600',
+  rowGap: {
+    gap: 4,
   },
 })

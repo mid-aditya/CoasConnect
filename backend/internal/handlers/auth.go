@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	"coasconnect/backend/internal/middleware"
 	"coasconnect/backend/internal/models"
 )
 
@@ -57,7 +58,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.db.ExecContext(r.Context(),
-		"INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+		"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'pasien')",
 		input.Name, input.Email, string(hash))
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -101,20 +102,34 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	h.writeAuth(w, http.StatusOK, u)
 }
 
+// Me mengembalikan data user yang sedang login.
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	u, ok := getUserByID(h.db, r, middleware.UserID(r.Context()))
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "sesi tidak valid")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": u})
+}
+
 func (h *AuthHandler) getCredentials(r *http.Request, email string) (models.User, string, bool) {
 	var u models.User
+	var sup sql.NullInt64
 	err := h.db.QueryRowContext(r.Context(),
-		"SELECT id, name, email, password_hash, created_at, updated_at FROM users WHERE email = ?", email).
-		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+		"SELECT id, name, email, password_hash, role, supervisor_id, created_at, updated_at FROM users WHERE email = ?", email).
+		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return u, "", false
+	}
+	if sup.Valid {
+		u.SupervisorID = &sup.Int64
 	}
 	return u, u.PasswordHash, true
 }
 
 // writeAuth mengirim user + token dalam satu response (login & register).
 func (h *AuthHandler) writeAuth(w http.ResponseWriter, status int, u models.User) {
-	token, err := h.issueToken(u.ID)
+	token, err := h.issueToken(u.ID, u.Role)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gagal menerbitkan token")
 		return
@@ -122,12 +137,13 @@ func (h *AuthHandler) writeAuth(w http.ResponseWriter, status int, u models.User
 	writeJSON(w, status, map[string]any{"data": map[string]any{"user": u, "token": token}})
 }
 
-func (h *AuthHandler) issueToken(userID int64) (string, error) {
+func (h *AuthHandler) issueToken(userID int64, role string) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub": strconv.FormatInt(userID, 10),
-		"iat": now.Unix(),
-		"exp": now.Add(h.tokenTTL).Unix(),
+		"sub":  strconv.FormatInt(userID, 10),
+		"role": role,
+		"iat":  now.Unix(),
+		"exp":  now.Add(h.tokenTTL).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return tok.SignedString(h.jwtSecret)

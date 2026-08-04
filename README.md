@@ -2,12 +2,14 @@
 
 # 🌊 CoasConnect
 
-**Menghubungkan komunitas pesisir dalam satu jaringan.**
+**Menghubungkan pasien dengan dokter koas dalam satu alur perawatan.**
 
 </div>
 
-Monorepo aplikasi CoasConnect — platform konektivitas untuk nelayan, koperasi,
-dan pasar pesisir.
+Monorepo aplikasi CoasConnect — platform monitoring pasien yang ditangani
+dokter koas (ko-asisten) di bawah bimbingan dokter spesialis/pembimbing.
+Alurnya: pasien membuat janji temu → dokter koas menangani dengan supervisi
+spesialis → setiap sesi tercatat → sampai pasien pulih atau dinyatakan selesai.
 
 ## 🏗️ Arsitektur
 
@@ -53,18 +55,31 @@ API tersedia di `http://localhost:8080`.
 | Method | Endpoint          | Fungsi            |
 | ------ | ----------------- | ----------------- |
 | GET    | `/api/v1/health`  | Health check      |
-| POST   | `/api/v1/auth/register` | Daftar akun + terbitkan token JWT |
+| POST   | `/api/v1/auth/register` | Daftar akun **pasien** + terbitkan token JWT |
 | POST   | `/api/v1/auth/login`    | Login + terbitkan token JWT |
-| GET    | `/api/v1/users`   | Daftar user *(butuh token)* |
-| POST   | `/api/v1/users`   | Tambah user *(butuh token)* |
-| GET    | `/api/v1/users/{id}` | Detail user *(butuh token)* |
-| PUT    | `/api/v1/users/{id}` | Ubah user *(butuh token)* |
-| DELETE | `/api/v1/users/{id}` | Hapus user *(butuh token)* |
+| GET    | `/api/v1/auth/me`       | Data user yang login *(butuh token)* |
+| GET    | `/api/v1/koas`    | Daftar dokter koas *(butuh token)* |
+| POST   | `/api/v1/cases`   | Buka kasus + janji temu pertama *(pasien)* |
+| GET    | `/api/v1/cases`   | Daftar kasus sesuai peran *(butuh token)* |
+| GET    | `/api/v1/cases/{id}` | Detail kasus *(butuh token)* |
+| PATCH  | `/api/v1/cases/{id}` | Ubah status kasus: pulih/selesai *(koas/pembimbing)* |
+| GET    | `/api/v1/cases/{id}/appointments` | Sesi monitoring kasus *(butuh token)* |
+| POST   | `/api/v1/cases/{id}/appointments` | Janji temu lanjutan *(pasien pemilik)* |
+| PATCH  | `/api/v1/appointments/{id}` | Catat hasil sesi *(koas pemilik)* |
 
-Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel.
+Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel dan
+**akun demo** (dibuat saat pertama kali jalan):
 
-> **Autentikasi:** semua endpoint `/users` butuh header `Authorization: Bearer
-> <token>`. Token didapat dari `/auth/register` atau `/auth/login`. Set env
+| Akun | Email | Password | Role |
+| ---- | ----- | -------- | ---- |
+| Pasien (daftar sendiri) | — | — | `pasien` |
+| Dokter Koas | `koas@coasconnect.id` | `koas1234` | `koas` |
+| Dokter Spesialis | `spesialis@coasconnect.id` | `spesialis123` | `spesialis` |
+
+> **Autentikasi & role:** semua endpoint `/cases`, `/appointments`, `/koas`
+> butuh header `Authorization: Bearer <token>`. Token didapat dari
+> `/auth/register` atau `/auth/login`. Registrasi selalu membuat akun `pasien`;
+> akun `koas`/`spesialis` dibuat seed (belum ada UI admin). Set env
 > `JWT_SECRET` dengan nilai unik sebelum deploy (default hanya untuk dev).
 
 ### 2. Frontend (React web)
@@ -143,12 +158,13 @@ coasconnect/
 
 ## 🛣️ Roadmap singkat
 
-- [x] Backend Go + SQLite (CRUD user, health check)
-- [x] Autentikasi (JWT) — register/login, route user dilindungi
-- [x] Frontend React (landing + demo CRUD end-to-end)
-- [x] Mobile React Native (Expo) (status API + CRUD)
-- [ ] Autentikasi (JWT)
-- [ ] Fitur domain: harga pasar, logistik, koperasi
+- [x] Backend Go + SQLite (kasus, janji temu, role: pasien/koas/spesialis)
+- [x] Autentikasi (JWT) + otorisasi per role
+- [x] Frontend React (landing + dashboard per role: pasien, koas, pembimbing)
+- [x] Mobile React Native (Expo) (alur pasien: janji temu + status kasus)
+- [ ] Fitur lanjutan: admin/manajemen akun koas & spesialis
+- [ ] Fitur domain: resep, hasil pemeriksaan, notifikasi
+- [ ] Deploy (Railway / Render / VPS) + CI/CD
 ---
 
 Dibuat dengan Go · React · React Native · ❤️

@@ -1,43 +1,40 @@
 const FEATURES = [
   {
-    title: 'Harga pasar real-time',
-    body: 'Info harga ikan dari pelabuhan terdekat diperbarui otomatis, sehingga nelayan tahu kapan dan ke mana menjual.',
+    title: 'Janji temu pertama',
+    body: 'Pasien memilih dokter koas dan mencatat keluhan awal — kasus langsung terbuka beserta jadwal temu pertama.',
     icon: (
       <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M8 3v4M16 3v4M3 10h18" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Penanganan dokter koas',
+    body: 'Dokter koas menangani kasus dengan pendampingan dokter spesialis sebagai pembimbing supervisi.',
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <path d="M12 21s-7-4.6-9.3-9A5.4 5.4 0 0 1 12 6.6 5.4 5.4 0 0 1 21.3 12C19 16.4 12 21 12 21Z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Sesi monitoring tercatat',
+    body: 'Setiap sesi dicatat: jadwal, hasil, dan catatan perkembangan pasien — riwayat utuh dalam satu kasus.',
+    icon: (
+      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 17l5-6 4 3 6-8 3 2" />
         <path d="M3 21h18" />
       </svg>
     ),
   },
   {
-    title: 'Logistik bersama',
-    body: 'Kapal dan armada pendingin saling terhubung, mengisi rute yang sama tanpa perjalanan kosong.',
+    title: 'Status sampai pulih',
+    body: 'Kasus berjalan dari aktif, ditandai pulih, hingga selesai — jelas kapan pasien dinyatakan selesai dirawat.',
     icon: (
       <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 7h11v8H3zM14 10h4l3 3v2h-7z" />
-        <circle cx="7" cy="17.5" r="1.8" />
-        <circle cx="17" cy="17.5" r="1.8" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Koperasi terhubung',
-    body: 'Administrasi koperasi dari satu dasbor: iuran, pinjaman, dan pembagian hasil transparan.',
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-        <circle cx="9" cy="8" r="3.2" />
-        <circle cx="17" cy="9" r="2.4" />
-        <path d="M3.5 20c.8-3.2 2.9-5 5.5-5s4.7 1.8 5.5 5M13.5 15.2c2-.6 3.7-.4 4.8 1.3" />
-      </svg>
-    ),
-  },
-  {
-    title: 'Aplikasi mobile',
-    body: 'Akses jaringan dari mana saja lewat aplikasi mobile — bahkan saat berada di tengah laut.',
-    icon: (
-      <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
-        <path d="M11 18.5h2" />
+        <circle cx="12" cy="12" r="9" />
+        <path d="M8.5 12.5l2.5 2.5 5-5" />
       </svg>
     ),
   },
@@ -52,11 +49,11 @@ export default function Features() {
             Mengapa CoasConnect
           </p>
           <h2 className="mt-2 font-display font-700 text-3xl text-ink-900">
-            Jaringan yang bekerja untuk nelayan
+            Perawatan yang terpantau dari awal sampai selesai
           </h2>
           <p className="mt-3 text-ink-900/60 leading-relaxed">
-            Dibangun dengan Go, React, dan React Native — cepat di laut, andal
-            di darat.
+            Dibangun dengan Go, React, dan React Native — cepat diakses dari
+            klinik maupun dari rumah.
           </p>
         </div>
 

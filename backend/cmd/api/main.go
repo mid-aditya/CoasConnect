@@ -22,6 +22,10 @@ func main() {
 		log.Fatalf("gagal migrasi database: %v", err)
 	}
 
+	if err := database.Seed(db); err != nil {
+		log.Fatalf("gagal seed database: %v", err)
+	}
+
 	r := router.New(db, cfg)
 
 	addr := ":" + cfg.Port

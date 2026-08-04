@@ -14,6 +14,8 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY)
 }
 
+export type Role = 'pasien' | 'koas' | 'spesialis'
+
 export interface Health {
   status: string
   service: string
@@ -25,8 +27,39 @@ export interface User {
   id: number
   name: string
   email: string
+  role: Role
+  supervisor_id?: number
   created_at: string
   updated_at: string
+}
+
+export interface CaseView {
+  id: number
+  patient_id: number
+  koas_id: number
+  supervisor_id: number
+  complaint: string
+  status: 'aktif' | 'pulih' | 'selesai'
+  patient_name: string
+  koas_name: string
+  supervisor_name: string
+  created_at: string
+  updated_at: string
+  closed_at: string | null
+}
+
+export interface Appointment {
+  id: number
+  case_id: number
+  scheduled_at: string
+  status: 'terjadwal' | 'selesai' | 'dibatalkan'
+  notes: string
+  created_at: string
+}
+
+export interface Koas {
+  id: number
+  name: string
 }
 
 export interface AuthResponse {
@@ -55,10 +88,6 @@ export function getHealth(): Promise<Health> {
   return request<Health>('/api/v1/health')
 }
 
-export function getUsers(): Promise<{ data: User[] }> {
-  return request<{ data: User[] }>('/api/v1/users')
-}
-
 export function login(email: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>('/api/v1/auth/login', {
     method: 'POST',
@@ -73,13 +102,53 @@ export function register(name: string, email: string, password: string): Promise
   })
 }
 
-export function createUser(input: { name: string; email: string }): Promise<{ data: User }> {
-  return request<{ data: User }>('/api/v1/users', {
+export function getMe(): Promise<{ data: User }> {
+  return request<{ data: User }>('/api/v1/auth/me')
+}
+
+export function getKoas(): Promise<{ data: Koas[] }> {
+  return request<{ data: Koas[] }>('/api/v1/koas')
+}
+
+export function createCase(input: {
+  koas_id: number
+  complaint: string
+  scheduled_at: string
+}): Promise<{ data: CaseView }> {
+  return request<{ data: CaseView }>('/api/v1/cases', {
     method: 'POST',
     body: JSON.stringify(input),
   })
 }
 
-export function deleteUser(id: number): Promise<{ message: string }> {
-  return request<{ message: string }>(`/api/v1/users/${id}`, { method: 'DELETE' })
+export function getCases(): Promise<{ data: CaseView[] }> {
+  return request<{ data: CaseView[] }>('/api/v1/cases')
+}
+
+export function updateCaseStatus(id: number, status: string): Promise<{ data: CaseView }> {
+  return request<{ data: CaseView }>(`/api/v1/cases/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  })
+}
+
+export function getAppointments(caseId: number): Promise<{ data: Appointment[] }> {
+  return request<{ data: Appointment[] }>(`/api/v1/cases/${caseId}/appointments`)
+}
+
+export function createAppointment(caseId: number, scheduledAt: string): Promise<{ data: Appointment }> {
+  return request<{ data: Appointment }>(`/api/v1/cases/${caseId}/appointments`, {
+    method: 'POST',
+    body: JSON.stringify({ scheduled_at: scheduledAt }),
+  })
+}
+
+export function updateAppointment(
+  id: number,
+  input: { status: string; notes: string },
+): Promise<{ data: Appointment }> {
+  return request<{ data: Appointment }>(`/api/v1/appointments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }
