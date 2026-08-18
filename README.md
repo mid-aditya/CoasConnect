@@ -164,7 +164,7 @@ coasconnect/
 - [x] Frontend React (landing + dashboard per role: cari kampanye, kelola kampanye, supervisi)
 - [x] Data demo lengkap (2 koas, 1 pembimbing, 4 pasien, 6 kampanye)
 - [ ] Fitur profiling dokter koas (pembimbing dihubungkan eksplisit)
-- [ ] Mobile React Native (Expo): alur pasien melihat & mendaftar kampanye
+- [x] Mobile React Native (Expo): alur pasien melihat & mendaftar kampanye, koas memasang & mengelola kampanye
 - [ ] Deploy (Railway / Render / VPS) + CI/CD
 ---
 

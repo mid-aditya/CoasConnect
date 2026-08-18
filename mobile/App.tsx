@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   RefreshControl,
@@ -15,19 +16,16 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import {
   API_URL,
-  createAppointment,
-  createCase,
-  getAppointments,
-  getCases,
+  createCampaign,
+  getCampaigns,
   getHealth,
-  getKoas,
   getMe,
+  getMyCampaigns,
   getToken,
   setToken,
-  type Appointment,
-  type CaseView,
+  updateCampaign,
+  type CampaignView,
   type Health,
-  type Koas,
   type User,
 } from './src/api/client'
 import { colors } from './src/theme'
@@ -35,50 +33,47 @@ import AuthScreen from './src/AuthScreen'
 
 const STATUS_COLOR: Record<string, string> = {
   aktif: colors.aqua400,
-  pulih: colors.coral400,
-  selesai: colors.textDim,
+  tutup: colors.coral400,
 }
 
-const fmt = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+const EMPTY_FORM = { title: '', description: '', criteria: '', procedure: '', whatsapp: '' }
 
 export default function App() {
   const [authed, setAuthed] = useState(() => getToken() !== null)
   const [me, setMe] = useState<User | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
-  const [cases, setCases] = useState<CaseView[]>([])
-  const [koas, setKoas] = useState<Koas[]>([])
-  const [selected, setSelected] = useState<CaseView | null>(null)
-  const [appts, setAppts] = useState<Appointment[]>([])
-
-  const [koasId, setKoasId] = useState<number | null>(null)
-  const [complaint, setComplaint] = useState('')
-  const [when, setWhen] = useState('')
-  const [apptWhen, setApptWhen] = useState('')
+  const [campaigns, setCampaigns] = useState<CampaignView[]>([])
+  const [selected, setSelected] = useState<CampaignView | null>(null)
+  const [form, setForm] = useState(EMPTY_FORM)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const [h, c] = await Promise.all([getHealth(), getCases()])
+      const h = await getHealth()
       setHealth(h)
-      setCases(c.data)
     } catch {
       setHealth(null)
-      setCases([])
+    }
+    try {
+      const c = me?.role === 'koas' ? await getMyCampaigns() : await getCampaigns()
+      setCampaigns(c.data)
+    } catch {
+      setCampaigns([])
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [me?.role])
 
   useEffect(() => {
     if (!authed) return
     getMe()
       .then((r) => setMe(r.data))
-      .catch(() => {})
-    getKoas()
-      .then((r) => setKoas(r.data))
       .catch(() => {})
     load()
   }, [authed, load])
@@ -95,57 +90,52 @@ export default function App() {
     setSelected(null)
   }
 
-  const onSubmitCase = async () => {
-    if (!koasId || !complaint.trim() || !when.trim()) {
-      Alert.alert('Form belum lengkap', 'Pilih dokter koas, tulis keluhan, dan isi jadwal.')
+  const onWhatsApp = (number: string) => {
+    Linking.openURL(`https://wa.me/${number}`).catch(() =>
+      Alert.alert('Gagal membuka WhatsApp', 'Periksa koneksi atau nomor tujuan.'),
+    )
+  }
+
+  const onCreate = async () => {
+    if (!form.title.trim() || !form.criteria.trim() || !form.whatsapp.trim()) {
+      Alert.alert('Form belum lengkap', 'Judul, kriteria, dan nomor WhatsApp wajib diisi.')
       return
     }
     setSaving(true)
     try {
-      const res = await createCase({
-        koas_id: koasId,
-        complaint: complaint.trim(),
-        scheduled_at: new Date(when.trim()).toISOString(),
+      const res = await createCampaign({
+        title: form.title.trim(),
+        description: form.description.trim(),
+        criteria: form.criteria.trim(),
+        procedure: form.procedure.trim(),
+        whatsapp: form.whatsapp.trim(),
       })
-      setComplaint('')
-      setWhen('')
-      setSelected(res.data)
-      await load()
-      await openCase(res.data)
+      setForm(EMPTY_FORM)
+      setCampaigns((list) => [res.data, ...list])
+      Alert.alert('Kampanye terpasang', `"${res.data.title}" aktif dan bisa ditemukan pasien.`)
     } catch (e) {
-      Alert.alert('Gagal membuka kasus', e instanceof Error ? e.message : 'Terjadi kesalahan.')
+      Alert.alert('Gagal memasang kampanye', e instanceof Error ? e.message : 'Terjadi kesalahan.')
     } finally {
       setSaving(false)
     }
   }
 
-  const openCase = async (c: CaseView) => {
-    setSelected(c)
+  const onToggle = async (c: CampaignView) => {
     try {
-      const res = await getAppointments(c.id)
-      setAppts(res.data)
-    } catch {
-      setAppts([])
-    }
-  }
-
-  const onSubmitAppt = async () => {
-    if (!selected || !apptWhen.trim()) return
-    setSaving(true)
-    try {
-      await createAppointment(selected.id, new Date(apptWhen.trim()).toISOString())
-      setApptWhen('')
-      await openCase(selected)
+      const res = await updateCampaign(c.id, { status: c.status === 'aktif' ? 'tutup' : 'aktif' })
+      setCampaigns((list) => list.map((x) => (x.id === c.id ? res.data : x)))
+      setSelected((s) => (s?.id === c.id ? res.data : s))
     } catch (e) {
-      Alert.alert('Gagal membuat janji temu', e instanceof Error ? e.message : 'Terjadi kesalahan.')
-    } finally {
-      setSaving(false)
+      Alert.alert('Gagal mengubah status', e instanceof Error ? e.message : 'Terjadi kesalahan.')
     }
   }
 
   if (!authed) {
     return <AuthScreen onAuthed={() => setAuthed(true)} />
   }
+
+  const isKoas = me?.role === 'koas'
+  const isSpesialis = me?.role === 'spesialis'
 
   return (
     <KeyboardAvoidingView
@@ -169,7 +159,7 @@ export default function App() {
               Coas<Text style={styles.brandAccent}>Connect</Text>
             </Text>
             <Text style={styles.tagline}>
-              {me ? `${me.name} · ${me.role}` : 'Monitoring pasien · dokter koas'}
+              {me ? `${me.name} · ${me.role}` : 'Penjaringan pasien · dokter koas'}
             </Text>
           </View>
           <Pressable onPress={onLogout} hitSlop={8}>
@@ -201,76 +191,112 @@ export default function App() {
           )}
         </View>
 
-        {/* Form buka kasus (pasien) */}
-        <View style={[styles.card, styles.lightCard]}>
-          <Text style={styles.lightTitle}>Buat janji temu baru</Text>
+        {/* Koas: profil + pasang kampanye */}
+        {isKoas && (
+          <>
+            <View style={[styles.card, styles.darkCard]}>
+              <Text style={styles.cardLabel}>Profil koas</Text>
+              <View style={styles.profileRows}>
+                <View style={styles.cardRow}>
+                  <Text style={styles.monoLabel}>RS</Text>
+                  <Text style={styles.cardDetailStrong}>{me?.hospital || '—'}</Text>
+                </View>
+                <View style={styles.cardRow}>
+                  <Text style={styles.monoLabel}>Bidang</Text>
+                  <Text style={styles.cardDetailStrong}>{me?.specialty || '—'}</Text>
+                </View>
+              </View>
+              <Text style={styles.cardDetail}>
+                Pembimbing (dokter spesialis) akan dihubungkan lewat fitur profiling koas.
+              </Text>
+            </View>
 
-          <View style={styles.chips}>
-            {koas.map((k) => (
+            <View style={[styles.card, styles.lightCard]}>
+              <Text style={styles.lightTitle}>Pasang kampanye baru</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Judul (cth: Program Pendampingan Hipertensi)"
+                placeholderTextColor={colors.inkMuted}
+                value={form.title}
+                onChangeText={(t) => setForm((f) => ({ ...f, title: t }))}
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Deskripsi singkat"
+                placeholderTextColor={colors.inkMuted}
+                value={form.description}
+                onChangeText={(t) => setForm((f) => ({ ...f, description: t }))}
+                multiline
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Kriteria pasien (cth: hipertensi usia 40–65 th)"
+                placeholderTextColor={colors.inkMuted}
+                value={form.criteria}
+                onChangeText={(t) => setForm((f) => ({ ...f, criteria: t }))}
+                multiline
+              />
+              <TextInput
+                style={styles.input}
+                placeholder={'Prosedur pendaftaran (1) … 2) …'}
+                placeholderTextColor={colors.inkMuted}
+                value={form.procedure}
+                onChangeText={(t) => setForm((f) => ({ ...f, procedure: t }))}
+                multiline
+              />
+              <TextInput
+                style={styles.input}
+                placeholder="Nomor WhatsApp (format: 628…)"
+                placeholderTextColor={colors.inkMuted}
+                value={form.whatsapp}
+                onChangeText={(t) => setForm((f) => ({ ...f, whatsapp: t }))}
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+              />
               <Pressable
-                key={k.id}
-                onPress={() => setKoasId(k.id)}
-                style={[styles.chip, koasId === k.id && styles.chipActive]}
+                style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+                onPress={onCreate}
+                disabled={saving}
               >
-                <Text style={[styles.chipText, koasId === k.id && styles.chipTextActive]}>
-                  {k.name}
-                </Text>
+                {saving ? (
+                  <ActivityIndicator color={colors.ink950} size="small" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Pasang kampanye</Text>
+                )}
               </Pressable>
-            ))}
-            {koas.length === 0 && <Text style={styles.hint}>Belum ada dokter koas terdaftar.</Text>}
-          </View>
+            </View>
+          </>
+        )}
 
-          <TextInput
-            style={styles.input}
-            placeholder="Keluhan awal (cth: demam sejak 2 hari)"
-            placeholderTextColor={colors.inkMuted}
-            value={complaint}
-            onChangeText={setComplaint}
-            multiline
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Jadwal temu pertama, mis. 2026-08-10T09:00"
-            placeholderTextColor={colors.inkMuted}
-            value={when}
-            onChangeText={setWhen}
-            autoCapitalize="none"
-          />
-
-          <Pressable
-            style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
-            onPress={onSubmitCase}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={colors.ink950} size="small" />
-            ) : (
-              <Text style={styles.primaryBtnText}>Buka kasus</Text>
-            )}
-          </Pressable>
-        </View>
-
-        {/* Daftar kasus */}
+        {/* Daftar kampanye */}
         <View style={[styles.card, styles.lightCard]}>
           <Text style={styles.lightTitle}>
-            Kasus saya <Text style={styles.count}>{cases.length > 0 ? `· ${cases.length}` : ''}</Text>
+            {isKoas ? 'Kampanye saya' : isSpesialis ? 'Kampanye di bawah supervisi' : 'Cari kampanye'}{' '}
+            <Text style={styles.count}>{campaigns.length > 0 ? `· ${campaigns.length}` : ''}</Text>
           </Text>
 
-          {!loading && cases.length === 0 ? (
-            <Text style={styles.empty}>Belum ada kasus. Buka kasus pertama di atas.</Text>
+          {!loading && campaigns.length === 0 ? (
+            <Text style={styles.empty}>
+              {isKoas
+                ? 'Belum ada kampanye. Pasang kampanye pertama di atas.'
+                : 'Belum ada kampanye yang tersedia saat ini.'}
+            </Text>
           ) : (
-            cases.map((c) => (
-              <Pressable key={c.id} onPress={() => openCase(c)}>
+            campaigns.map((c) => (
+              <Pressable key={c.id} onPress={() => setSelected(c)}>
                 <View style={styles.member}>
                   <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{c.patient_name.charAt(0).toUpperCase()}</Text>
+                    <Text style={styles.avatarText}>{c.koas_name.charAt(0).toUpperCase()}</Text>
                   </View>
                   <View style={styles.memberCopy}>
                     <Text style={styles.memberName} numberOfLines={1}>
-                      {c.complaint}
+                      {c.title}
                     </Text>
                     <Text style={styles.memberEmail} numberOfLines={1}>
-                      {c.koas_name} · {c.supervisor_name}
+                      {c.koas_name} · {c.hospital || '—'} · {c.specialty || '—'}
+                    </Text>
+                    <Text style={styles.memberMeta} numberOfLines={1}>
+                      Dibuat {fmtDate(c.created_at)} · {c.whatsapp}
                     </Text>
                   </View>
                   <Text style={[styles.statusText, { color: STATUS_COLOR[c.status] }]}>
@@ -282,50 +308,66 @@ export default function App() {
           )}
         </View>
 
-        {/* Detail kasus: sesi monitoring */}
+        {/* Detail kampanye */}
         {selected && (
           <View style={[styles.card, styles.lightCard]}>
-            <Text style={styles.lightTitle}>
-              Sesi monitoring · kasus #{selected.id}{' '}
-              <Text style={{ color: STATUS_COLOR[selected.status] }}>({selected.status})</Text>
-            </Text>
-            <Text style={styles.memberEmail}>
-              Ditangani {selected.koas_name} · Pembimbing {selected.supervisor_name}
-            </Text>
-
-            {appts.length === 0 && <Text style={styles.empty}>Belum ada sesi.</Text>}
-            {appts.map((a) => (
-              <View key={a.id} style={styles.member}>
-                <View style={styles.memberCopy}>
-                  <Text style={styles.memberName}>{fmt(a.scheduled_at)}</Text>
-                  <Text style={styles.memberEmail}>{a.notes || '—'}</Text>
+            <View style={styles.cardRow}>
+              <Text style={styles.lightTitle}>Detail kampanye</Text>
+              <Text style={[styles.statusText, { color: STATUS_COLOR[selected.status] }]}>
+                {selected.status}
+              </Text>
+            </View>
+            <Text style={styles.memberName}>{selected.title}</Text>
+            {!!selected.description && (
+              <Text style={styles.memberEmail}>{selected.description}</Text>
+            )}
+            <View style={styles.chips}>
+              {[selected.specialty, selected.hospital].filter(Boolean).map((t) => (
+                <View key={t} style={styles.chip}>
+                  <Text style={styles.chipText}>{t}</Text>
                 </View>
-                <Text style={[styles.statusText, { color: STATUS_COLOR[a.status] }]}>{a.status}</Text>
-              </View>
-            ))}
+              ))}
+            </View>
 
-            {selected.status !== 'selesai' && (
-              <View style={styles.rowGap}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Jadwal lanjutan, mis. 2026-08-17T09:00"
-                  placeholderTextColor={colors.inkMuted}
-                  value={apptWhen}
-                  onChangeText={setApptWhen}
-                  autoCapitalize="none"
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
-                  onPress={onSubmitAppt}
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color={colors.ink950} size="small" />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>Janji temu lanjutan</Text>
-                  )}
-                </Pressable>
+            <Text style={styles.detailLabel}>Kriteria pasien</Text>
+            <Text style={styles.memberEmail}>{selected.criteria}</Text>
+
+            {!!selected.procedure && (
+              <>
+                <Text style={styles.detailLabel}>Prosedur</Text>
+                <Text style={styles.memberEmail}>{selected.procedure}</Text>
+              </>
+            )}
+
+            <View style={styles.profileRows}>
+              <View style={styles.cardRow}>
+                <Text style={styles.monoLabel}>Koas</Text>
+                <Text style={styles.memberName}>{selected.koas_name}</Text>
               </View>
+              <View style={styles.cardRow}>
+                <Text style={styles.monoLabel}>Pembimbing</Text>
+                <Text style={styles.memberName}>{selected.supervisor_name || '—'}</Text>
+              </View>
+            </View>
+
+            {!isSpesialis && (
+              <Pressable
+                style={({ pressed }) => [styles.primaryBtn, pressed && styles.btnPressed]}
+                onPress={() => onWhatsApp(selected.whatsapp)}
+              >
+                <Text style={styles.primaryBtnText}>Daftar lewat WhatsApp</Text>
+              </Pressable>
+            )}
+
+            {isKoas && (
+              <Pressable
+                style={({ pressed }) => [styles.secondaryBtn, pressed && styles.btnPressed]}
+                onPress={() => onToggle(selected)}
+              >
+                <Text style={styles.secondaryBtnText}>
+                  {selected.status === 'aktif' ? 'Tutup kampanye' : 'Aktifkan kembali'}
+                </Text>
+              </Pressable>
             )}
           </View>
         )}
@@ -354,9 +396,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(34, 199, 176, 0.15)',
+    backgroundColor: 'rgba(46, 125, 91, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(62, 224, 200, 0.4)',
+    borderColor: 'rgba(46, 125, 91, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -406,6 +448,27 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  cardDetail: {
+    color: colors.textDim,
+    fontSize: 13,
+    marginTop: 10,
+  },
+  cardDetailStrong: {
+    color: colors.sand100,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  monoLabel: {
+    color: colors.textFaint,
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  profileRows: {
+    gap: 8,
+    marginTop: 12,
+  },
   statusPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -413,7 +476,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(62, 224, 200, 0.12)',
+    backgroundColor: 'rgba(46, 125, 91, 0.2)',
   },
   statusDot: {
     width: 8,
@@ -433,43 +496,33 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
   },
-  cardDetail: {
-    color: colors.textDim,
-    fontSize: 13,
-    marginTop: 10,
-  },
   lightTitle: {
     color: colors.ink900,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 14,
+    flexShrink: 1,
   },
   count: { color: colors.ocean700 },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 14,
   },
   chip: {
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: 'rgba(11, 27, 40, 0.12)',
-  },
-  chipActive: {
-    backgroundColor: colors.aqua500,
-    borderColor: colors.aqua500,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: colors.mist100,
   },
   chipText: {
-    color: colors.ink900,
-    fontSize: 13,
+    color: colors.ocean700,
+    fontSize: 12,
     fontWeight: '600',
-  },
-  chipTextActive: {
-    color: colors.ink950,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
     backgroundColor: colors.white,
@@ -487,9 +540,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
+  secondaryBtn: {
+    backgroundColor: colors.mist100,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
   btnPressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
   primaryBtnText: {
     color: colors.ink950,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryBtnText: {
+    color: colors.ocean700,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -498,17 +563,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  hint: {
-    color: colors.inkMuted,
-    fontSize: 13,
-  },
   member: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(11, 27, 40, 0.06)',
+    borderTopColor: 'rgba(22, 36, 29, 0.06)',
   },
   avatar: {
     width: 40,
@@ -534,7 +595,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 2,
   },
-  rowGap: {
-    gap: 4,
+  memberMeta: {
+    color: colors.inkMuted,
+    fontSize: 11,
+    marginTop: 2,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+  },
+  detailLabel: {
+    color: colors.ocean700,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: 12,
+    marginBottom: 4,
   },
 })
