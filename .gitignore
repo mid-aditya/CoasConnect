@@ -16,6 +16,7 @@ backend/bin/
 backend/data/
 backend/coasconnect.db
 backend/coasconnect.db-*
+backend/api.exe
 *.test
 
 # --- Frontend (React web) ---

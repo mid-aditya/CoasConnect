@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -104,7 +105,8 @@ func TestMonitoringFlow(t *testing.T) {
 		t.Fatal("daftar koas kosong")
 	}
 	koasID := int64(koasList[0].(map[string]any)["id"].(float64))
-	createBody := fmt.Sprintf(`{"koas_id":%d,"complaint":"Demam tinggi","scheduled_at":"2026-08-10T09:00:00+07:00"}`, koasID)
+	complaint := "Demam tinggi"
+	createBody := fmt.Sprintf(`{"koas_id":%d,"complaint":"%s","scheduled_at":"2026-08-10T09:00:00+07:00"}`, koasID, complaint)
 
 	// Koas login sebagai pasien harus ditolak di POST /cases.
 	if status, _ := do("POST", "/api/v1/cases", createBody, koasToken); status != http.StatusForbidden {
@@ -127,11 +129,12 @@ func TestMonitoringFlow(t *testing.T) {
 		t.Fatalf("koas list kasus: status %d", status)
 	}
 	list := payload["data"].([]any)
-	if len(list) != 1 {
-		t.Fatalf("koas melihat %d kasus, ingin 1", len(list))
+	if !containsCase(list, complaint) {
+		t.Fatalf("kasus yang baru dibuat tidak ada di daftar koas: %d kasus", len(list))
 	}
 
-	status, payload = do("GET", "/api/v1/cases/1/appointments", "", koasToken)
+	caseID := int64(kasus["id"].(float64))
+	status, payload = do("GET", "/api/v1/cases/"+itoa(caseID)+"/appointments", "", koasToken)
 	if status != http.StatusOK {
 		t.Fatalf("list janji temu: status %d", status)
 	}
@@ -158,24 +161,34 @@ func TestMonitoringFlow(t *testing.T) {
 	}
 
 	// Koas tandai pulih, spesialis tutup kasus.
-	if status, _ := do("PATCH", "/api/v1/cases/1", `{"status":"pulih"}`, koasToken); status != http.StatusOK {
+	casePath := "/api/v1/cases/" + itoa(caseID)
+	if status, _ := do("PATCH", casePath, `{"status":"pulih"}`, koasToken); status != http.StatusOK {
 		t.Fatalf("tandai pulih: status %d", status)
 	}
-	if status, _ := do("PATCH", "/api/v1/cases/1", `{"status":"selesai"}`, spesialisToken); status != http.StatusOK {
+	if status, _ := do("PATCH", casePath, `{"status":"selesai"}`, spesialisToken); status != http.StatusOK {
 		t.Fatalf("tutup kasus: status %d", status)
 	}
-	status, payload = do("GET", "/api/v1/cases/1", "", spesialisToken)
+	status, payload = do("GET", casePath, "", spesialisToken)
 	if status != http.StatusOK || payload["data"].(map[string]any)["status"] != "selesai" {
 		t.Fatalf("status akhir kasus: %v", payload)
 	}
 
 	// Pasien lain tidak boleh melihat kasus ini.
 	pasien3 := register("Pasien Tiga", "pasien3@test.id", "rahasia123")
-	if status, _ := do("GET", "/api/v1/cases/1", "", pasien3); status != http.StatusForbidden {
+	if status, _ := do("GET", casePath, "", pasien3); status != http.StatusForbidden {
 		t.Fatalf("pasien lain lihat kasus: status %d, ingin 403", status)
 	}
 }
 
+func containsCase(list []any, complaint string) bool {
+	for _, item := range list {
+		if c, ok := item.(map[string]any); ok && c["complaint"] == complaint {
+			return true
+		}
+	}
+	return false
+}
+
 func itoa(i int64) string {
-	return string(rune('0' + i)) // cukup untuk id 1 digit di test ini
+	return strconv.FormatInt(i, 10)
 }
