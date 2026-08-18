@@ -26,8 +26,7 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 
 	healthHandler := handlers.NewHealthHandler()
 	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret, cfg.TokenTTL)
-	caseHandler := handlers.NewCaseHandler(db)
-	appointmentHandler := handlers.NewAppointmentHandler(db)
+	campaignHandler := handlers.NewCampaignHandler(db)
 	koasHandler := handlers.NewKoasHandler(db)
 
 	r.Route("/api/v1", func(r chi.Router) {
@@ -43,18 +42,17 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 			r.Get("/auth/me", authHandler.Me)
 			r.Get("/koas", koasHandler.List)
 
-			// Hanya pasien yang membuka kasus baru.
-			r.Group(func(r chi.Router) {
-				r.Use(middleware.RequireRole("pasien"))
-				r.Post("/cases", caseHandler.Create)
-			})
+			// Kampanye bisa dilihat semua role terautentikasi (pasien mencari
+			// pasien, koas & spesialis memantau).
+			r.Get("/campaigns", campaignHandler.List)
+			r.Get("/campaigns/{id}", campaignHandler.Get)
 
-			r.Get("/cases", caseHandler.List)
-			r.Get("/cases/{id}", caseHandler.Get)
-			r.Patch("/cases/{id}", caseHandler.UpdateStatus)
-			r.Get("/cases/{id}/appointments", appointmentHandler.List)
-			r.Post("/cases/{id}/appointments", appointmentHandler.Create)
-			r.Patch("/appointments/{id}", appointmentHandler.Update)
+			// Hanya dokter koas yang membuat & mengelola kampanye.
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole("koas"))
+				r.Post("/campaigns", campaignHandler.Create)
+				r.Patch("/campaigns/{id}", campaignHandler.Update)
+			})
 		})
 	})
 

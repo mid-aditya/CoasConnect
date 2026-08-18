@@ -1,23 +1,23 @@
 const LANGKAH = [
   {
     no: '01',
-    title: 'Pasien buka kasus',
-    body: 'Pasien memilih dokter koas dan mencatat keluhan awal. Janji temu pertama langsung terjadwal, kasus pun terbuka.',
+    title: 'Koas memasang kampanye',
+    body: 'Dokter koas membuat akun, melengkapi profil (RS & bidang), lalu memasang kampanye berisi kriteria pasien dan prosedur pendaftaran.',
   },
   {
     no: '02',
-    title: 'Koas menangani',
-    body: 'Dokter koas melakukan anamnesis dan penanganan. Setiap sesi dicatat ke dalam berkas kasus yang sama.',
+    title: 'Pasien menemukan kampanye',
+    body: 'Pasien mencari kampanye yang sesuai kondisinya lewat web atau mobile — cukup yang sedang aktif dan cocok dengan kriteria.',
   },
   {
     no: '03',
-    title: 'Pembimbing menilai',
-    body: 'Dokter spesialis meninjau catatan sesi dan memberikan supervisi atas penanganan yang dilakukan koas.',
+    title: 'Pasien mendaftar via WhatsApp',
+    body: 'Pasien mengikuti prosedur di kartu kampanye dan menghubungi nomor WhatsApp koas. Pendaftaran & jadwal diurus di sana.',
   },
   {
     no: '04',
-    title: 'Sampai pulih',
-    body: 'Status kasus berjalan dari aktif ke pulih, lalu ditutup saat pasien dinyatakan selesai dirawat.',
+    title: 'Dibimbing langsung oleh koas',
+    body: 'Koas membimbing pasien dengan supervisi dokter spesialis. Interaksi berjalan di WhatsApp — platform ini fokus mencari & mendistribusikan pasien.',
   },
 ] as const
 
@@ -31,12 +31,12 @@ export default function HowItWorks() {
               Cara kerja
             </p>
             <h2 className="mt-4 font-display font-extrabold text-3xl tracking-[-0.015em] text-ink sm:text-4xl">
-              Satu alur yang tidak terputus, dari kasus dibuka sampai ditutup
+              Dari kampanye terpasang sampai pasien terbimbing
             </h2>
             <p className="mt-4 text-muted leading-relaxed">
-              Tidak ada lagi riwayat yang tersebar di chat atau catatan
-              terpisah. Semua pihak melihat perkembangan yang sama di berkas
-              yang sama.
+              Tanpa birokrasi pendaftaran yang panjang. Koas menentukan
+              kriteria, pasien yang cocok mengikuti prosedur, dan bimbingan
+              berjalan langsung lewat WhatsApp.
             </p>
           </div>
 

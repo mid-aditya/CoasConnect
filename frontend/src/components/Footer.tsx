@@ -10,8 +10,9 @@ export default function Footer() {
               Coas<span className="text-paper/70">Connect</span>
             </p>
             <p className="mt-1 text-sm text-paper/50">
-              Monitoring pasien yang ditangani dokter koas, dibimbing dokter
-              spesialis.
+              Platform penjaringan pasien untuk dokter koas — pasien
+              menemukan kampanye sesuai kriteria, bimbingan berjalan via
+              WhatsApp.
             </p>
           </div>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-paper/60">

@@ -29,37 +29,35 @@ export interface User {
   email: string
   role: Role
   supervisor_id?: number
+  hospital: string
+  specialty: string
   created_at: string
   updated_at: string
 }
 
-export interface CaseView {
+export interface CampaignView {
   id: number
-  patient_id: number
   koas_id: number
-  supervisor_id: number
-  complaint: string
-  status: 'aktif' | 'pulih' | 'selesai'
-  patient_name: string
+  title: string
+  description: string
+  criteria: string
+  procedure: string
+  specialty: string
+  hospital: string
+  whatsapp: string
+  status: 'aktif' | 'tutup'
   koas_name: string
   supervisor_name: string
   created_at: string
   updated_at: string
-  closed_at: string | null
-}
-
-export interface Appointment {
-  id: number
-  case_id: number
-  scheduled_at: string
-  status: 'terjadwal' | 'selesai' | 'dibatalkan'
-  notes: string
-  created_at: string
 }
 
 export interface Koas {
   id: number
   name: string
+  hospital: string
+  specialty: string
+  supervisor_id?: number
 }
 
 export interface AuthResponse {
@@ -95,10 +93,17 @@ export function login(email: string, password: string): Promise<AuthResponse> {
   })
 }
 
-export function register(name: string, email: string, password: string): Promise<AuthResponse> {
+export function register(
+  name: string,
+  email: string,
+  password: string,
+  role: 'pasien' | 'koas' = 'pasien',
+  hospital = '',
+  specialty = '',
+): Promise<AuthResponse> {
   return request<AuthResponse>('/api/v1/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, role, hospital, specialty }),
   })
 }
 
@@ -110,44 +115,43 @@ export function getKoas(): Promise<{ data: Koas[] }> {
   return request<{ data: Koas[] }>('/api/v1/koas')
 }
 
-export function createCase(input: {
-  koas_id: number
-  complaint: string
-  scheduled_at: string
-}): Promise<{ data: CaseView }> {
-  return request<{ data: CaseView }>('/api/v1/cases', {
+export function getCampaigns(): Promise<{ data: CampaignView[] }> {
+  return request<{ data: CampaignView[] }>('/api/v1/campaigns')
+}
+
+export function getMyCampaigns(): Promise<{ data: CampaignView[] }> {
+  return request<{ data: CampaignView[] }>('/api/v1/campaigns?mine=true')
+}
+
+export function getCampaign(id: number): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>(`/api/v1/campaigns/${id}`)
+}
+
+export function createCampaign(input: {
+  title: string
+  description: string
+  criteria: string
+  procedure: string
+  whatsapp: string
+}): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>('/api/v1/campaigns', {
     method: 'POST',
     body: JSON.stringify(input),
   })
 }
 
-export function getCases(): Promise<{ data: CaseView[] }> {
-  return request<{ data: CaseView[] }>('/api/v1/cases')
-}
-
-export function updateCaseStatus(id: number, status: string): Promise<{ data: CaseView }> {
-  return request<{ data: CaseView }>(`/api/v1/cases/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  })
-}
-
-export function getAppointments(caseId: number): Promise<{ data: Appointment[] }> {
-  return request<{ data: Appointment[] }>(`/api/v1/cases/${caseId}/appointments`)
-}
-
-export function createAppointment(caseId: number, scheduledAt: string): Promise<{ data: Appointment }> {
-  return request<{ data: Appointment }>(`/api/v1/cases/${caseId}/appointments`, {
-    method: 'POST',
-    body: JSON.stringify({ scheduled_at: scheduledAt }),
-  })
-}
-
-export function updateAppointment(
+export function updateCampaign(
   id: number,
-  input: { status: string; notes: string },
-): Promise<{ data: Appointment }> {
-  return request<{ data: Appointment }>(`/api/v1/appointments/${id}`, {
+  input: Partial<{
+    title: string
+    description: string
+    criteria: string
+    procedure: string
+    whatsapp: string
+    status: 'aktif' | 'tutup'
+  }>,
+): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>(`/api/v1/campaigns/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(input),
   })

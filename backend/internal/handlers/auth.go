@@ -29,11 +29,16 @@ func NewAuthHandler(db *sql.DB, secret string, ttl time.Duration) *AuthHandler {
 }
 
 // Register membuat user baru (dengan password) dan langsung menerbitkan token.
+// Role default pasien; dokter koas bisa mendaftar langsung dengan profil
+// RS & bidang (pembimbing diisi kemudian lewat profiling koas).
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		Role      string `json:"role"` // pasien (default) | koas
+		Hospital  string `json:"hospital"`
+		Specialty string `json:"specialty"`
 	}
 	if err := decodeJSON(r, &input); err != nil {
 		writeError(w, http.StatusBadRequest, "format body JSON tidak valid")
@@ -51,6 +56,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	role := strings.TrimSpace(input.Role)
+	if role == "" {
+		role = "pasien"
+	}
+	if role != "pasien" && role != "koas" {
+		writeError(w, http.StatusUnprocessableEntity, "role harus pasien atau koas")
+		return
+	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), 12)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gagal memproses password")
@@ -58,8 +72,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.db.ExecContext(r.Context(),
-		"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, 'pasien')",
-		input.Name, input.Email, string(hash))
+		"INSERT INTO users (name, email, password_hash, role, hospital, specialty) VALUES (?, ?, ?, ?, ?, ?)",
+		input.Name, input.Email, string(hash), role,
+		strings.TrimSpace(input.Hospital), strings.TrimSpace(input.Specialty))
 	if err != nil {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "email sudah terdaftar")
@@ -116,8 +131,8 @@ func (h *AuthHandler) getCredentials(r *http.Request, email string) (models.User
 	var u models.User
 	var sup sql.NullInt64
 	err := h.db.QueryRowContext(r.Context(),
-		"SELECT id, name, email, password_hash, role, supervisor_id, created_at, updated_at FROM users WHERE email = ?", email).
-		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.CreatedAt, &u.UpdatedAt)
+		"SELECT id, name, email, password_hash, role, supervisor_id, hospital, specialty, created_at, updated_at FROM users WHERE email = ?", email).
+		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.Hospital, &u.Specialty, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return u, "", false
 	}

@@ -15,7 +15,7 @@ export default function Navbar({ authed }: { authed?: boolean }) {
               Coas<span className="text-pine">Connect</span>
             </span>
             <span className="hidden md:block font-mono text-[10px] tracking-[0.12em] text-muted">
-              — Monitoring Pasien & Dokter Koas
+              — Platform Penjaringan Pasien untuk Dokter Koas
             </span>
           </span>
         </Link>

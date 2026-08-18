@@ -5,6 +5,7 @@ import { login, register, setToken } from '../api/client'
 const DEMO_AKUN = [
   ['Dokter Koas', 'koas@coasconnect.id', 'koas1234'],
   ['Dokter Spesialis', 'spesialis@coasconnect.id', 'spesialis123'],
+  ['Pasien', 'budi@coasconnect.id', 'pasien1234'],
 ] as const
 
 export default function Login({ onAuthed }: { onAuthed: () => void }) {
@@ -13,6 +14,9 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<'pasien' | 'koas'>('pasien')
+  const [hospital, setHospital] = useState('')
+  const [specialty, setSpecialty] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,12 +31,16 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
       setError('Nama wajib diisi untuk registrasi.')
       return
     }
+    if (mode === 'register' && role === 'koas' && !hospital.trim()) {
+      setError('RS tempat koas wajib diisi.')
+      return
+    }
     setBusy(true)
     try {
       const res =
         mode === 'login'
           ? await login(email.trim(), password)
-          : await register(name.trim(), email.trim(), password)
+          : await register(name.trim(), email.trim(), password, role, hospital.trim(), specialty.trim())
       setToken(res.data.token)
       onAuthed()
       navigate('/app')
@@ -69,12 +77,12 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
           </div>
 
           <h1 className="mt-8 font-display font-extrabold text-3xl tracking-[-0.015em] text-ink">
-            {mode === 'login' ? 'Masuk' : 'Daftar sebagai pasien'}
+            {mode === 'login' ? 'Masuk' : 'Buat akun'}
           </h1>
           <p className="mt-2 text-muted leading-relaxed">
             {mode === 'login'
-              ? 'Masuk untuk membuka dan memantau kasus perawatan.'
-              : 'Registrasi membuka akun pasien. Akun dokter koas & spesialis dikelola penyelenggara.'}
+              ? 'Masuk untuk mengelola kampanye atau mencari pasien yang cocok.'
+              : 'Pasien mendaftar dengan email. Koas cukup menambahkan RS & bidang — pembimbing diisi kemudian.'}
           </p>
 
           <form
@@ -82,18 +90,39 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
             className="mt-8 rounded-xl bg-white p-5 ring-1 ring-line shadow-[0_1px_3px_rgba(22,36,29,0.06)] space-y-4"
           >
             {mode === 'register' && (
-              <div>
-                <label htmlFor="auth-name" className="block text-sm font-medium text-ink mb-1.5">
-                  Nama lengkap
-                </label>
-                <input
-                  id="auth-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="cth: Marina Lestari"
-                  className="w-full px-4 py-2.5 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow"
-                />
-              </div>
+              <>
+                <div>
+                  <label htmlFor="auth-name" className="block text-sm font-medium text-ink mb-1.5">
+                    Nama lengkap
+                  </label>
+                  <input
+                    id="auth-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="cth: Marina Lestari"
+                    className="w-full px-4 py-2.5 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow"
+                  />
+                </div>
+                <div>
+                  <span className="block text-sm font-medium text-ink mb-1.5">Saya daftar sebagai</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['pasien', 'koas'] as const).map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRole(r)}
+                        className={`px-4 py-2.5 rounded-lg text-sm font-semibold ring-1 transition-colors ${
+                          role === r
+                            ? 'bg-pine text-paper ring-pine'
+                            : 'bg-paper text-muted ring-line hover:text-ink hover:ring-ink'
+                        }`}
+                      >
+                        {r === 'pasien' ? 'Pasien' : 'Dokter Koas'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <label htmlFor="auth-email" className="block text-sm font-medium text-ink mb-1.5">
@@ -121,6 +150,35 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
                 className="w-full px-4 py-2.5 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow"
               />
             </div>
+
+            {mode === 'register' && role === 'koas' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="auth-hospital" className="block text-sm font-medium text-ink mb-1.5">
+                    RS tempat bertugas
+                  </label>
+                  <input
+                    id="auth-hospital"
+                    value={hospital}
+                    onChange={(e) => setHospital(e.target.value)}
+                    placeholder="cth: RSUD Kota Malang"
+                    className="w-full px-4 py-2.5 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="auth-specialty" className="block text-sm font-medium text-ink mb-1.5">
+                    Bidang minat
+                  </label>
+                  <input
+                    id="auth-specialty"
+                    value={specialty}
+                    onChange={(e) => setSpecialty(e.target.value)}
+                    placeholder="cth: Anak"
+                    className="w-full px-4 py-2.5 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow"
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <p className="text-sm text-clay bg-clay/5 ring-1 ring-clay/20 rounded-lg px-3 py-2">

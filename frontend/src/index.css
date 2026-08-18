@@ -27,12 +27,6 @@
   --color-coral-400: #c96e4a;
   --color-mist-100: #e3ede7;
   --color-ocean-700: #0f4a31;
-
-  --animate-ecg-draw: ecg-draw 2.4s ease-out forwards;
-}
-
-@keyframes ecg-draw {
-  to { stroke-dashoffset: 0; }
 }
 
 html {
@@ -49,17 +43,4 @@ body {
 ::selection {
   background: var(--color-pine);
   color: var(--color-paper);
-}
-
-/* Garis ECG di hero: gambar sekali saat load, hormati reduced motion */
-.ecg-line {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ecg-line {
-    animation: none;
-    stroke-dashoffset: 0;
-  }
 }

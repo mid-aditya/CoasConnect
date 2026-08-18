@@ -1,18 +1,18 @@
 const PERAN = [
   {
     nama: 'Pasien',
-    fokus: 'Aplikasi mobile',
-    body: 'Buka kasus, pilih dokter koas, dan pantau jadwal temu dari HP. Semua perkembangan perawatan ada di satu tempat.',
+    fokus: 'Web & mobile',
+    body: 'Cari kampanye yang sesuai kondisi, daftar lewat WhatsApp, dan dapatkan bimbingan langsung dari dokter koas.',
   },
   {
     nama: 'Dokter Koas',
-    fokus: 'Web · catatan sesi',
-    body: 'Tangani kasus dengan panduan pembimbing. Catat tiap sesi, dan riwayat kasus tetap utuh sampai pasien selesai.',
+    fokus: 'Web · pasang kampanye',
+    body: 'Buat profil (RS & bidang), pasang kampanye penjaringan, dan kelola status kampanye — pasien yang cocok datang sendiri.',
   },
   {
     nama: 'Dokter Pembimbing',
-    fokus: 'Web · validasi',
-    body: 'Awasi penanganan koas, tinjau catatan sesi, lalu nyatakan pasien pulih atau selesai dengan validasi.',
+    fokus: 'Web · supervisi',
+    body: 'Pantau kampanye & pasien yang dibimbing dokter koas di bawah supervisi Anda.',
   },
 ] as const
 
@@ -24,7 +24,7 @@ export default function Roles() {
           Untuk siapa
         </p>
         <h2 className="mt-4 max-w-2xl font-display font-extrabold text-3xl tracking-[-0.015em] text-ink sm:text-4xl">
-          Tiga peran, satu berkas perawatan yang sama
+          Tiga peran dalam satu alur penjaringan
         </h2>
 
         <div className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">

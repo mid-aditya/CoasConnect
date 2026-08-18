@@ -12,10 +12,10 @@ type KoasHandler struct {
 
 func NewKoasHandler(db *sql.DB) *KoasHandler { return &KoasHandler{db: db} }
 
-// List mengembalikan daftar dokter koas (id + nama).
+// List mengembalikan daftar dokter koas beserta profil (RS, bidang, pembimbing).
 func (h *KoasHandler) List(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.QueryContext(r.Context(),
-		"SELECT id, name FROM users WHERE role = 'koas' ORDER BY name")
+		"SELECT id, name, COALESCE(hospital, ''), COALESCE(specialty, ''), supervisor_id FROM users WHERE role = 'koas' ORDER BY name")
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gagal mengambil daftar dokter koas")
 		return
@@ -23,17 +23,27 @@ func (h *KoasHandler) List(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	list := []struct {
-		ID   int64  `json:"id"`
-		Name string `json:"name"`
+		ID           int64  `json:"id"`
+		Name         string `json:"name"`
+		Hospital     string `json:"hospital"`
+		Specialty    string `json:"specialty"`
+		SupervisorID *int64 `json:"supervisor_id,omitempty"`
 	}{}
 	for rows.Next() {
 		var item struct {
-			ID   int64  `json:"id"`
-			Name string `json:"name"`
+			ID           int64  `json:"id"`
+			Name         string `json:"name"`
+			Hospital     string `json:"hospital"`
+			Specialty    string `json:"specialty"`
+			SupervisorID *int64 `json:"supervisor_id,omitempty"`
 		}
-		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+		var sup sql.NullInt64
+		if err := rows.Scan(&item.ID, &item.Name, &item.Hospital, &item.Specialty, &sup); err != nil {
 			writeError(w, http.StatusInternalServerError, "gagal membaca daftar dokter koas")
 			return
+		}
+		if sup.Valid {
+			item.SupervisorID = &sup.Int64
 		}
 		list = append(list, item)
 	}

@@ -36,8 +36,8 @@ func getUserByID(db *sql.DB, r *http.Request, id int64) (models.User, bool) {
 	var u models.User
 	var sup sql.NullInt64
 	err := db.QueryRowContext(r.Context(),
-		"SELECT id, name, email, password_hash, role, supervisor_id, created_at, updated_at FROM users WHERE id = ?", id).
-		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.CreatedAt, &u.UpdatedAt)
+		"SELECT id, name, email, password_hash, role, supervisor_id, hospital, specialty, created_at, updated_at FROM users WHERE id = ?", id).
+		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.Hospital, &u.Specialty, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return u, false
 	}

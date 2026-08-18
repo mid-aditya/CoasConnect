@@ -3,7 +3,6 @@ package router
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -15,9 +14,9 @@ import (
 	"coasconnect/backend/internal/database"
 )
 
-// alur inti: register pasien → buat kasus (janji temu pertama) → koas catat
-// sesi → status kasus pulih → selesai. Plus cek akses (401/403) di tiap peran.
-func TestMonitoringFlow(t *testing.T) {
+// alur inti: register pasien & koas → koas buat kampanye → pasien melihat &
+// mendaftar via WhatsApp → koas menutup kampanye. Plus cek akses (401/403).
+func TestCampaignFlow(t *testing.T) {
 	db, err := database.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -59,16 +58,6 @@ func TestMonitoringFlow(t *testing.T) {
 		}
 		return res.StatusCode, payload
 	}
-
-	register := func(name, email, password string) string {
-		status, payload := do("POST", "/api/v1/auth/register",
-			`{"name":"`+name+`","email":"`+email+`","password":"`+password+`"}`, "")
-		if status != http.StatusCreated {
-			t.Fatalf("register %s: status %d (%v)", email, status, payload)
-		}
-		data := payload["data"].(map[string]any)
-		return data["token"].(string)
-	}
 	login := func(email, password string) string {
 		status, payload := do("POST", "/api/v1/auth/login",
 			`{"email":"`+email+`","password":"`+password+`"}`, "")
@@ -78,111 +67,120 @@ func TestMonitoringFlow(t *testing.T) {
 		return payload["data"].(map[string]any)["token"].(string)
 	}
 
-	// Route kasus tanpa token harus 401.
-	if status, _ := do("GET", "/api/v1/cases", "", ""); status != http.StatusUnauthorized {
-		t.Fatalf("cases tanpa token: status %d, ingin 401", status)
+	// Route kampanye tanpa token harus 401.
+	if status, _ := do("GET", "/api/v1/campaigns", "", ""); status != http.StatusUnauthorized {
+		t.Fatalf("campaigns tanpa token: status %d, ingin 401", status)
 	}
 
 	// Register pasien → role harus pasien.
 	status, payload := do("POST", "/api/v1/auth/register",
 		`{"name":"Pasien Uji","email":"pasien@test.id","password":"rahasia123"}`, "")
 	if status != http.StatusCreated {
-		t.Fatalf("register: status %d (%v)", status, payload)
+		t.Fatalf("register pasien: status %d (%v)", status, payload)
 	}
 	user := payload["data"].(map[string]any)["user"].(map[string]any)
 	if user["role"] != "pasien" {
 		t.Fatalf("role setelah register: %v, ingin pasien", user["role"])
 	}
-	pasienToken := register("Pasien Dua", "pasien2@test.id", "rahasia123")
+	pasienToken := payload["data"].(map[string]any)["token"].(string)
+
+	// Register koas → role koas + profil RS/bidang tersimpan.
+	status, payload = do("POST", "/api/v1/auth/register",
+		`{"name":"Koas Uji","email":"koasuji@test.id","password":"rahasia123","role":"koas","hospital":"RSUD Uji","specialty":"Bedah"}`, "")
+	if status != http.StatusCreated {
+		t.Fatalf("register koas: status %d (%v)", status, payload)
+	}
+	koasUser := payload["data"].(map[string]any)["user"].(map[string]any)
+	if koasUser["role"] != "koas" {
+		t.Fatalf("role koas: %v, ingin koas", koasUser["role"])
+	}
+	if koasUser["hospital"] != "RSUD Uji" || koasUser["specialty"] != "Bedah" {
+		t.Fatalf("profil koas tidak tersimpan: %v", koasUser)
+	}
 
 	koasToken := login("koas@coasconnect.id", "koas1234")
+	koas2Token := login("koas2@coasconnect.id", "koas1234")
 	spesialisToken := login("spesialis@coasconnect.id", "spesialis123")
 
-	// Ambil ID dokter koas yang asli (hasil seed).
-	_, payload = do("GET", "/api/v1/koas", "", pasienToken)
-	koasList := payload["data"].([]any)
-	if len(koasList) == 0 {
-		t.Fatal("daftar koas kosong")
-	}
-	koasID := int64(koasList[0].(map[string]any)["id"].(float64))
-	complaint := "Demam tinggi"
-	createBody := fmt.Sprintf(`{"koas_id":%d,"complaint":"%s","scheduled_at":"2026-08-10T09:00:00+07:00"}`, koasID, complaint)
+	createBody := `{"title":"Program Uji","description":"Deskripsi uji","criteria":"Kriteria uji","procedure":"1) Chat WA\\n2) Ikuti arahan","whatsapp":"6281234567899"}`
 
-	// Koas login sebagai pasien harus ditolak di POST /cases.
-	if status, _ := do("POST", "/api/v1/cases", createBody, koasToken); status != http.StatusForbidden {
-		t.Fatalf("koas buat kasus: status %d, ingin 403", status)
+	// Pasien tidak boleh membuat kampanye.
+	if status, _ := do("POST", "/api/v1/campaigns", createBody, pasienToken); status != http.StatusForbidden {
+		t.Fatalf("pasien buat kampanye: status %d, ingin 403", status)
 	}
 
-	// Pasien buat kasus → kasus aktif + janji temu pertama otomatis.
-	status, payload = do("POST", "/api/v1/cases", createBody, pasienToken)
+	// Koas buat kampanye → aktif, RS diambil dari profil (fallback).
+	status, payload = do("POST", "/api/v1/campaigns", createBody, koasToken)
 	if status != http.StatusCreated {
-		t.Fatalf("buat kasus: status %d (%v)", status, payload)
+		t.Fatalf("buat kampanye: status %d (%v)", status, payload)
 	}
-	kasus := payload["data"].(map[string]any)
-	if kasus["status"] != "aktif" {
-		t.Fatalf("status kasus baru: %v, ingin aktif", kasus["status"])
+	kampanye := payload["data"].(map[string]any)
+	if kampanye["status"] != "aktif" {
+		t.Fatalf("status kampanye baru: %v, ingin aktif", kampanye["status"])
 	}
+	if kampanye["hospital"] != "RSUD Dr. Soetomo" {
+		t.Fatalf("fallback RS dari profil koas gagal: %v", kampanye["hospital"])
+	}
+	campaignID := int64(kampanye["id"].(float64))
 
-	// Koas lihat kasusnya, catat sesi pertama.
-	status, payload = do("GET", "/api/v1/cases", "", koasToken)
+	// Pasien melihat kampanye di daftar umum.
+	status, payload = do("GET", "/api/v1/campaigns", "", pasienToken)
 	if status != http.StatusOK {
-		t.Fatalf("koas list kasus: status %d", status)
+		t.Fatalf("pasien list kampanye: status %d", status)
 	}
-	list := payload["data"].([]any)
-	if !containsCase(list, complaint) {
-		t.Fatalf("kasus yang baru dibuat tidak ada di daftar koas: %d kasus", len(list))
+	if !containsCampaign(payload["data"].([]any), "Program Uji") {
+		t.Fatalf("kampanye baru tidak muncul di daftar pasien")
 	}
 
-	caseID := int64(kasus["id"].(float64))
-	status, payload = do("GET", "/api/v1/cases/"+itoa(caseID)+"/appointments", "", koasToken)
+	// Detail kampanye boleh dilihat spesialis.
+	status, payload = do("GET", "/api/v1/campaigns/"+itoa(campaignID), "", spesialisToken)
 	if status != http.StatusOK {
-		t.Fatalf("list janji temu: status %d", status)
+		t.Fatalf("spesialis lihat detail: status %d", status)
 	}
-	appts := payload["data"].([]any)
-	if len(appts) != 1 {
-		t.Fatalf("jumlah janji temu: %d, ingin 1", len(appts))
-	}
-	apptID := int64(appts[0].(map[string]any)["id"].(float64))
-
-	// Catat sesi tanpa catatan harus 422.
-	if status, _ := do("PATCH", "/api/v1/appointments/"+itoa(apptID), `{"status":"selesai","notes":""}`, koasToken); status != http.StatusUnprocessableEntity {
-		t.Fatalf("selesai tanpa catatan: status %d, ingin 422", status)
+	if payload["data"].(map[string]any)["title"] != "Program Uji" {
+		t.Fatalf("detail kampanye salah: %v", payload["data"])
 	}
 
-	// Pasien tidak boleh mencatat sesi (bukan koas).
-	if status, _ := do("PATCH", "/api/v1/appointments/"+itoa(apptID), `{"status":"selesai","notes":"x"}`, pasienToken); status != http.StatusForbidden {
-		t.Fatalf("pasien catat sesi: status %d, ingin 403", status)
+	// Koas lain tidak boleh mengubah kampanye milik orang lain.
+	if status, _ := do("PATCH", "/api/v1/campaigns/"+itoa(campaignID), `{"status":"tutup"}`, koas2Token); status != http.StatusForbidden {
+		t.Fatalf("koas lain ubah kampanye: status %d, ingin 403", status)
+	}
+	// Pasien juga tidak boleh (route khusus koas).
+	if status, _ := do("PATCH", "/api/v1/campaigns/"+itoa(campaignID), `{"status":"tutup"}`, pasienToken); status != http.StatusForbidden {
+		t.Fatalf("pasien ubah kampanye: status %d, ingin 403", status)
 	}
 
-	// Koas catat sesi dengan catatan.
-	if status, _ := do("PATCH", "/api/v1/appointments/"+itoa(apptID),
-		`{"status":"selesai","notes":"Demam turun, kontrol minggu depan."}`, koasToken); status != http.StatusOK {
-		t.Fatalf("catat sesi: status %d, ingin 200", status)
+	// Pemilik menutup kampanye.
+	status, payload = do("PATCH", "/api/v1/campaigns/"+itoa(campaignID), `{"status":"tutup"}`, koasToken)
+	if status != http.StatusOK {
+		t.Fatalf("tutup kampanye: status %d (%v)", status, payload)
+	}
+	if payload["data"].(map[string]any)["status"] != "tutup" {
+		t.Fatalf("status setelah ditutup: %v", payload["data"])
 	}
 
-	// Koas tandai pulih, spesialis tutup kasus.
-	casePath := "/api/v1/cases/" + itoa(caseID)
-	if status, _ := do("PATCH", casePath, `{"status":"pulih"}`, koasToken); status != http.StatusOK {
-		t.Fatalf("tandai pulih: status %d", status)
-	}
-	if status, _ := do("PATCH", casePath, `{"status":"selesai"}`, spesialisToken); status != http.StatusOK {
-		t.Fatalf("tutup kasus: status %d", status)
-	}
-	status, payload = do("GET", casePath, "", spesialisToken)
-	if status != http.StatusOK || payload["data"].(map[string]any)["status"] != "selesai" {
-		t.Fatalf("status akhir kasus: %v", payload)
+	// Kampanye tutup tidak muncul lagi di daftar umum pasien.
+	status, payload = do("GET", "/api/v1/campaigns", "", pasienToken)
+	if status != http.StatusOK || containsCampaign(payload["data"].([]any), "Program Uji") {
+		t.Fatalf("kampanye tutup masih muncul di daftar pasien: %v", payload)
 	}
 
-	// Pasien lain tidak boleh melihat kasus ini.
-	pasien3 := register("Pasien Tiga", "pasien3@test.id", "rahasia123")
-	if status, _ := do("GET", casePath, "", pasien3); status != http.StatusForbidden {
-		t.Fatalf("pasien lain lihat kasus: status %d, ingin 403", status)
+	// Koas pemilik masih melihatnya lewat ?mine=true.
+	status, payload = do("GET", "/api/v1/campaigns?mine=true", "", koasToken)
+	if status != http.StatusOK || !containsCampaign(payload["data"].([]any), "Program Uji") {
+		t.Fatalf("kampanye milik koas tidak muncul di ?mine=true: %v", payload)
+	}
+
+	// Spesialis melihat kampanye koas di bawah supervisinya (data seed).
+	status, payload = do("GET", "/api/v1/campaigns", "", spesialisToken)
+	if status != http.StatusOK || len(payload["data"].([]any)) == 0 {
+		t.Fatalf("spesialis list kampanye supervisi: status %d (%v)", status, payload)
 	}
 }
 
-func containsCase(list []any, complaint string) bool {
+func containsCampaign(list []any, title string) bool {
 	for _, item := range list {
-		if c, ok := item.(map[string]any); ok && c["complaint"] == complaint {
+		if c, ok := item.(map[string]any); ok && c["title"] == title {
 			return true
 		}
 	}

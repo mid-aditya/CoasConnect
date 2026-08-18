@@ -6,10 +6,11 @@
 
 </div>
 
-Monorepo aplikasi CoasConnect — platform monitoring pasien yang ditangani
-dokter koas (ko-asisten) di bawah bimbingan dokter spesialis/pembimbing.
-Alurnya: pasien membuat janji temu → dokter koas menangani dengan supervisi
-spesialis → setiap sesi tercatat → sampai pasien pulih atau dinyatakan selesai.
+Monorepo aplikasi CoasConnect — platform penjaringan pasien untuk dokter koas
+(ko-asisten). Dokter koas memasang kampanye berisi kriteria & prosedur, pasien
+menemukannya lewat web atau mobile, lalu dibimbing langsung oleh koas dengan
+supervisi dokter spesialis. Janji temu & tugas koas dialihkan ke WhatsApp —
+platform ini fokus mencari & mendistribusikan pasien.
 
 ## 🏗️ Arsitektur
 
@@ -55,31 +56,31 @@ API tersedia di `http://localhost:8080`.
 | Method | Endpoint          | Fungsi            |
 | ------ | ----------------- | ----------------- |
 | GET    | `/api/v1/health`  | Health check      |
-| POST   | `/api/v1/auth/register` | Daftar akun **pasien** + terbitkan token JWT |
+| POST   | `/api/v1/auth/register` | Daftar akun **pasien** atau **koas** (RS & bidang) + token JWT |
 | POST   | `/api/v1/auth/login`    | Login + terbitkan token JWT |
 | GET    | `/api/v1/auth/me`       | Data user yang login *(butuh token)* |
-| GET    | `/api/v1/koas`    | Daftar dokter koas *(butuh token)* |
-| POST   | `/api/v1/cases`   | Buka kasus + janji temu pertama *(pasien)* |
-| GET    | `/api/v1/cases`   | Daftar kasus sesuai peran *(butuh token)* |
-| GET    | `/api/v1/cases/{id}` | Detail kasus *(butuh token)* |
-| PATCH  | `/api/v1/cases/{id}` | Ubah status kasus: pulih/selesai *(koas/pembimbing)* |
-| GET    | `/api/v1/cases/{id}/appointments` | Sesi monitoring kasus *(butuh token)* |
-| POST   | `/api/v1/cases/{id}/appointments` | Janji temu lanjutan *(pasien pemilik)* |
-| PATCH  | `/api/v1/appointments/{id}` | Catat hasil sesi *(koas pemilik)* |
+| GET    | `/api/v1/koas`    | Daftar dokter koas + profil (RS, bidang, pembimbing) *(butuh token)* |
+| GET    | `/api/v1/campaigns` | Daftar kampanye sesuai peran *(butuh token)* |
+| GET    | `/api/v1/campaigns?mine=true` | Kampanye milik koas yang login *(koas)* |
+| GET    | `/api/v1/campaigns/{id}` | Detail kampanye *(butuh token)* |
+| POST   | `/api/v1/campaigns` | Pasang kampanye baru *(koas)* |
+| PATCH  | `/api/v1/campaigns/{id}` | Ubah kampanye / status aktif-tutup *(koas pemilik)* |
 
 Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel dan
 **akun demo** (dibuat saat pertama kali jalan):
 
 | Akun | Email | Password | Role |
 | ---- | ----- | -------- | ---- |
-| Pasien (daftar sendiri) | — | — | `pasien` |
+| Pasien | `budi@coasconnect.id` | `pasien1234` | `pasien` |
 | Dokter Koas | `koas@coasconnect.id` | `koas1234` | `koas` |
+| Dokter Koas (2) | `koas2@coasconnect.id` | `koas1234` | `koas` |
 | Dokter Spesialis | `spesialis@coasconnect.id` | `spesialis123` | `spesialis` |
 
-> **Autentikasi & role:** semua endpoint `/cases`, `/appointments`, `/koas`
+> **Autentikasi & role:** semua endpoint `/campaigns`, `/koas`, `/auth/me`
 > butuh header `Authorization: Bearer <token>`. Token didapat dari
-> `/auth/register` atau `/auth/login`. Registrasi selalu membuat akun `pasien`;
-> akun `koas`/`spesialis` dibuat seed (belum ada UI admin). Set env
+> `/auth/register` atau `/auth/login`. Registrasi menerima `role`
+> (`pasien` default | `koas`) plus `hospital` & `specialty` untuk koas.
+> Akun `spesialis` dibuat seed (belum ada UI admin). Set env
 > `JWT_SECRET` dengan nilai unik sebelum deploy (default hanya untuk dev).
 
 ### 2. Frontend (React web)
@@ -158,12 +159,12 @@ coasconnect/
 
 ## 🛣️ Roadmap singkat
 
-- [x] Backend Go + SQLite (kasus, janji temu, role: pasien/koas/spesialis)
-- [x] Autentikasi (JWT) + otorisasi per role
-- [x] Frontend React (landing + dashboard per role: pasien, koas, pembimbing)
-- [x] Mobile React Native (Expo) (alur pasien: janji temu + status kasus)
-- [ ] Fitur lanjutan: admin/manajemen akun koas & spesialis
-- [ ] Fitur domain: resep, hasil pemeriksaan, notifikasi
+- [x] Backend Go + SQLite (kampanye, role: pasien/koas/spesialis)
+- [x] Autentikasi (JWT) + otorisasi per role (register koas dengan profil RS & bidang)
+- [x] Frontend React (landing + dashboard per role: cari kampanye, kelola kampanye, supervisi)
+- [x] Data demo lengkap (2 koas, 1 pembimbing, 4 pasien, 6 kampanye)
+- [ ] Fitur profiling dokter koas (pembimbing dihubungkan eksplisit)
+- [ ] Mobile React Native (Expo): alur pasien melihat & mendaftar kampanye
 - [ ] Deploy (Railway / Render / VPS) + CI/CD
 ---
 

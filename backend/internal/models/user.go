@@ -10,6 +10,8 @@ type User struct {
 	PasswordHash string    `json:"-"` // tidak pernah dikirim ke client
 	Role         string    `json:"role"`
 	SupervisorID *int64    `json:"supervisor_id,omitempty"` // khusus role koas: pembimbingnya
+	Hospital     string    `json:"hospital"`
+	Specialty    string    `json:"specialty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
