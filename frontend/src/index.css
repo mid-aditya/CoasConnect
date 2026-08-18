@@ -1,34 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
 
-  /* Palet "CoasConnect" — samudra dalam & pasir pantai */
-  --color-ink-950: #08151f;
-  --color-ink-900: #0b1b28;
-  --color-ink-800: #123a4d;
-  --color-ocean-700: #14607c;
-  --color-aqua-500: #22c7b0;
-  --color-aqua-400: #3ee0c8;
-  --color-coral-500: #ff7a59;
-  --color-coral-400: #ff937a;
-  --color-sand-100: #f6f1e7;
-  --color-sand-200: #efe6d4;
-  --color-mist-100: #e6f0f3;
+  /* Palet "berkas perawatan" — kertas klinis & hijau scrub */
+  --color-paper: #f6f8f7;
+  --color-ink: #16241d;
+  --color-pine: #14603f;
+  --color-mint: #e3ede7;
+  --color-line: #d9e2dc;
+  --color-muted: #5c6b63;
+  --color-clay: #b4552d;
 
-  --animate-pulse-node: pulse-node 2.4s ease-in-out infinite;
-  --animate-dash-flow: dash-flow 9s linear infinite;
+  /* Token lama → nilai baru (dipakai Login/Dashboard) */
+  --color-sand-100: #f6f8f7;
+  --color-sand-200: #edf2ef;
+  --color-ink-950: #0e1a14;
+  --color-ink-900: #16241d;
+  --color-ink-800: #274136;
+  --color-aqua-500: #14603f;
+  --color-aqua-400: #2e7d5b;
+  --color-coral-500: #b4552d;
+  --color-coral-400: #c96e4a;
+  --color-mist-100: #e3ede7;
+  --color-ocean-700: #0f4a31;
+
+  --animate-ecg-draw: ecg-draw 2.4s ease-out forwards;
 }
 
-@keyframes pulse-node {
-  0%, 100% { opacity: 0.35; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.35); }
-}
-
-@keyframes dash-flow {
-  to { stroke-dashoffset: -240; }
+@keyframes ecg-draw {
+  to { stroke-dashoffset: 0; }
 }
 
 html {
@@ -37,20 +41,25 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background: var(--color-sand-100);
-  color: var(--color-ink-900);
+  background: var(--color-paper);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--color-aqua-500);
-  color: var(--color-ink-950);
+  background: var(--color-pine);
+  color: var(--color-paper);
 }
 
-/* Grid motif untuk section */
-.motif-grid {
-  background-image:
-    linear-gradient(to right, rgba(34, 199, 176, 0.07) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(34, 199, 176, 0.07) 1px, transparent 1px);
-  background-size: 44px 44px;
+/* Garis ECG di hero: gambar sekali saat load, hormati reduced motion */
+.ecg-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecg-line {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
 }

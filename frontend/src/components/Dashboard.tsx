@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import {
   createAppointment,
   createCase,
@@ -14,19 +15,33 @@ import {
 } from '../api/client'
 
 const STATUS_BADGE: Record<string, string> = {
-  aktif: 'bg-aqua-500/10 text-aqua-500 ring-aqua-500/20',
-  pulih: 'bg-coral-500/10 text-coral-500 ring-coral-500/20',
-  selesai: 'bg-ink-900/10 text-ink-900/50 ring-ink-900/10',
+  aktif: 'text-clay bg-clay/5 ring-clay/15',
+  pulih: 'text-pine bg-pine/5 ring-pine/15',
+  selesai: 'text-muted bg-ink/5 ring-ink/10',
 }
 
 const APPT_BADGE: Record<string, string> = {
-  terjadwal: 'bg-aqua-500/10 text-aqua-500 ring-aqua-500/20',
-  selesai: 'bg-ink-900/10 text-ink-900/60 ring-ink-900/10',
-  dibatalkan: 'bg-coral-500/10 text-coral-500 ring-coral-500/20',
+  terjadwal: 'text-pine bg-pine/5 ring-pine/15',
+  selesai: 'text-muted bg-ink/5 ring-ink/10',
+  dibatalkan: 'text-clay bg-clay/5 ring-clay/15',
+}
+
+function Chip({ tone, label }: { tone: string; label: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] ring-1 ${tone}`}
+    >
+      <span className="w-1 h-1 rounded-full bg-current" />
+      {label}
+    </span>
+  )
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
 const toISO = (local: string) => new Date(local).toISOString()
+
+const inputCls =
+  'w-full px-3 py-2 rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none transition-shadow'
 
 export default function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [cases, setCases] = useState<CaseView[]>([])
@@ -137,227 +152,248 @@ export default function Dashboard({ user, onLogout }: { user: User; onLogout: ()
         : 'Kasus di bawah supervisi saya'
 
   return (
-    <section id="kasus" className="py-16 bg-sand-100">
-      <div className="mx-auto max-w-6xl px-6">
+    <div className="min-h-screen bg-[#edf1ee]">
+      <header className="sticky top-0 z-40 bg-ink text-paper border-b border-paper/10">
+        <nav className="mx-auto max-w-6xl px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex items-center gap-2.5">
+              <span className="grid place-items-center w-7 h-7 rounded-md bg-pine text-paper">
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M3 12h4l2-5 3 10 2.5-8 1.5 3H21" />
+                </svg>
+              </span>
+              <span className="font-display font-bold tracking-tight">
+                Coas<span className="text-paper/60">Connect</span>
+              </span>
+            </Link>
+            <span className="hidden sm:inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/50">
+              <span className="w-1 h-1 rounded-full bg-pine" />
+              Dashboard
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="hidden md:inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-paper/60">
+              {user.role}
+              <span className="text-paper/30">·</span>
+              {user.name}
+            </span>
+            <button
+              onClick={onLogout}
+              className="px-3 py-1.5 rounded-md ring-1 ring-paper/20 text-xs font-medium text-paper/70 hover:text-paper hover:ring-paper/40 transition-colors"
+            >
+              Keluar
+            </button>
+          </div>
+        </nav>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-coral-500">
-              {user.role} · {user.name}
-            </p>
-            <h2 className="mt-2 font-display font-700 text-3xl text-ink-900">{roleTitle}</h2>
+            <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-pine">{user.role}</p>
+            <h1 className="mt-1 font-display font-extrabold text-2xl tracking-[-0.015em] text-ink">{roleTitle}</h1>
           </div>
           <button
-            onClick={onLogout}
-            className="px-4 py-2 rounded-full text-sm font-medium ring-1 ring-ink-900/10 text-ink-900/60 hover:text-coral-500 hover:ring-coral-500/30 transition-colors"
+            onClick={load}
+            className="px-3 py-2 rounded-lg ring-1 ring-line text-sm text-muted hover:text-ink hover:ring-ink transition-colors"
           >
-            Keluar
+            Muat ulang
           </button>
         </div>
 
         {error && (
-          <p className="mt-6 text-sm text-coral-500 bg-coral-500/5 ring-1 ring-coral-500/20 rounded-lg px-3 py-2">
-            {error}
-          </p>
+          <p className="mt-5 text-sm text-clay bg-clay/5 ring-1 ring-clay/20 rounded-lg px-3 py-2">{error}</p>
         )}
         {notice && (
-          <p className="mt-6 text-sm text-aqua-500 bg-aqua-500/5 ring-1 ring-aqua-500/20 rounded-lg px-3 py-2">
-            {notice}
-          </p>
+          <p className="mt-5 text-sm text-pine bg-pine/5 ring-1 ring-pine/20 rounded-lg px-3 py-2">{notice}</p>
         )}
 
-        <div className="mt-8 grid lg:grid-cols-5 gap-8">
+        <div className="mt-6 grid lg:grid-cols-5 gap-6 items-start">
           {/* Kolom kiri: aksi */}
           <div className="lg:col-span-2 space-y-6">
             {user.role === 'pasien' && (
-              <form
-                onSubmit={onCreateCase}
-                className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-ink-900/5 space-y-4"
-              >
-                <h3 className="font-display font-700 text-lg text-ink-900">Buat janji temu baru</h3>
-                <div>
-                  <label htmlFor="koas" className="block text-sm font-medium text-ink-900 mb-1.5">
-                    Dokter koas
-                  </label>
-                  <select
-                    id="koas"
-                    value={koasId}
-                    onChange={(e) => setKoasId(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-sand-100 ring-1 ring-ink-900/10 focus:ring-2 focus:ring-aqua-500 outline-none transition-shadow"
+              <section className="rounded-lg bg-white ring-1 ring-line overflow-hidden">
+                <h2 className="px-5 py-3 border-b border-line font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                  Buat janji temu baru
+                </h2>
+                <form onSubmit={onCreateCase} className="p-5 space-y-4">
+                  <div>
+                    <label htmlFor="koas" className="block text-sm font-medium text-ink mb-1.5">
+                      Dokter koas
+                    </label>
+                    <select
+                      id="koas"
+                      value={koasId}
+                      onChange={(e) => setKoasId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">Pilih dokter koas…</option>
+                      {koas.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="complaint" className="block text-sm font-medium text-ink mb-1.5">
+                      Keluhan awal
+                    </label>
+                    <textarea
+                      id="complaint"
+                      value={complaint}
+                      onChange={(e) => setComplaint(e.target.value)}
+                      rows={3}
+                      placeholder="cth: Demam tinggi sejak 2 hari, batuk…"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="when" className="block text-sm font-medium text-ink mb-1.5">
+                      Jadwal temu pertama
+                    </label>
+                    <input
+                      id="when"
+                      type="datetime-local"
+                      value={when}
+                      onChange={(e) => setWhen(e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full px-4 py-2.5 rounded-lg bg-pine text-paper font-semibold hover:bg-ink transition-colors"
                   >
-                    <option value="">Pilih dokter koas…</option>
-                    {koas.map((k) => (
-                      <option key={k.id} value={k.id}>
-                        {k.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="complaint" className="block text-sm font-medium text-ink-900 mb-1.5">
-                    Keluhan awal
-                  </label>
-                  <textarea
-                    id="complaint"
-                    value={complaint}
-                    onChange={(e) => setComplaint(e.target.value)}
-                    rows={3}
-                    placeholder="cth: Demam tinggi sejak 2 hari, batuk…"
-                    className="w-full px-4 py-2.5 rounded-xl bg-sand-100 ring-1 ring-ink-900/10 focus:ring-2 focus:ring-aqua-500 outline-none transition-shadow"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="when" className="block text-sm font-medium text-ink-900 mb-1.5">
-                    Jadwal temu pertama
-                  </label>
-                  <input
-                    id="when"
-                    type="datetime-local"
-                    value={when}
-                    onChange={(e) => setWhen(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-sand-100 ring-1 ring-ink-900/10 focus:ring-2 focus:ring-aqua-500 outline-none transition-shadow"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="w-full px-4 py-3 rounded-xl bg-ink-900 text-sand-100 font-semibold hover:bg-ink-800 hover:-translate-y-0.5 transition-all"
-                >
-                  Buka kasus
-                </button>
-              </form>
+                    Buka kasus
+                  </button>
+                </form>
+              </section>
             )}
 
             {selected && (
-              <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-ink-900/5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-display font-700 text-lg text-ink-900">Sesi monitoring</h3>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${STATUS_BADGE[selected.status]}`}>
-                    {selected.status}
-                  </span>
+              <section className="rounded-lg bg-white ring-1 ring-line overflow-hidden">
+                <div className="px-5 py-3 border-b border-line flex items-center justify-between">
+                  <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">Sesi monitoring</h2>
+                  <Chip tone={STATUS_BADGE[selected.status]} label={selected.status} />
                 </div>
-                <p className="text-sm text-ink-900/60 leading-relaxed">
-                  Kasus #{selected.id} — {selected.patient_name} · ditangani {selected.koas_name}
-                  <br />
-                  Pembimbing: {selected.supervisor_name}
-                </p>
+                <div className="p-5 space-y-4">
+                  <p className="text-sm text-muted leading-relaxed">
+                    Kasus #{selected.id} — {selected.patient_name} · ditangani {selected.koas_name}
+                    <br />
+                    Pembimbing: {selected.supervisor_name}
+                  </p>
 
-                <ul className="divide-y divide-ink-900/5">
-                  {appts.length === 0 && <li className="py-2 text-sm text-ink-900/40">Belum ada sesi.</li>}
-                  {appts.map((a) => (
-                    <li key={a.id} className="py-3 space-y-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium text-ink-900">{fmt(a.scheduled_at)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ring-1 ${APPT_BADGE[a.status]}`}>
-                          {a.status}
-                        </span>
-                      </div>
-                      {a.notes && <p className="text-sm text-ink-900/55">{a.notes}</p>}
-                      {a.status === 'terjadwal' && user.role === 'koas' && (
-                        <div className="flex gap-2 pt-1">
-                          <input
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Catatan hasil sesi…"
-                            className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-sand-100 ring-1 ring-ink-900/10 focus:ring-2 focus:ring-aqua-500 outline-none"
-                          />
-                          <button
-                            onClick={() => onCompleteAppt(a)}
-                            className="px-3 py-1.5 text-sm rounded-lg bg-aqua-500 text-ink-950 font-semibold hover:bg-aqua-400"
-                          >
-                            Catat
-                          </button>
+                  <ul className="divide-y divide-line">
+                    {appts.length === 0 && <li className="py-2 text-sm text-muted/60">Belum ada sesi.</li>}
+                    {appts.map((a) => (
+                      <li key={a.id} className="py-3 space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-xs text-ink">{fmt(a.scheduled_at)}</span>
+                          <Chip tone={APPT_BADGE[a.status]} label={a.status} />
                         </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                        {a.notes && <p className="text-sm text-muted">{a.notes}</p>}
+                        {a.status === 'terjadwal' && user.role === 'koas' && (
+                          <div className="flex gap-2 pt-1">
+                            <input
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Catatan hasil sesi…"
+                              className="flex-1 px-3 py-1.5 text-sm rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none"
+                            />
+                            <button
+                              onClick={() => onCompleteAppt(a)}
+                              className="px-3 py-1.5 text-sm rounded-lg bg-pine text-paper font-semibold hover:bg-ink transition-colors"
+                            >
+                              Catat
+                            </button>
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
 
-                {user.role === 'pasien' && selected.status !== 'selesai' && (
-                  <form onSubmit={onCreateAppt} className="flex gap-2">
-                    <input
-                      type="datetime-local"
-                      value={apptWhen}
-                      onChange={(e) => setApptWhen(e.target.value)}
-                      className="flex-1 px-3 py-2 text-sm rounded-xl bg-sand-100 ring-1 ring-ink-900/10 focus:ring-2 focus:ring-aqua-500 outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 text-sm rounded-xl bg-ink-900 text-sand-100 font-semibold hover:bg-ink-800"
-                    >
-                      Janji lanjutan
-                    </button>
-                  </form>
-                )}
-
-                {(user.role === 'koas' || user.role === 'spesialis') && selected.status !== 'selesai' && (
-                  <div className="flex gap-2">
-                    {selected.status !== 'pulih' && (
+                  {user.role === 'pasien' && selected.status !== 'selesai' && (
+                    <form onSubmit={onCreateAppt} className="flex gap-2">
+                      <input
+                        type="datetime-local"
+                        value={apptWhen}
+                        onChange={(e) => setApptWhen(e.target.value)}
+                        className="flex-1 px-3 py-2 text-sm rounded-lg bg-paper ring-1 ring-line focus:ring-2 focus:ring-pine outline-none"
+                      />
                       <button
-                        onClick={() => onSetStatus(selected, 'pulih')}
-                        className="flex-1 px-4 py-2 text-sm rounded-xl bg-coral-500/10 ring-1 ring-coral-500/30 text-coral-500 font-semibold hover:bg-coral-500/20"
+                        type="submit"
+                        className="px-4 py-2 text-sm rounded-lg bg-pine text-paper font-semibold hover:bg-ink transition-colors"
                       >
-                        Tandai pulih
+                        Janji lanjutan
                       </button>
-                    )}
-                    <button
-                      onClick={() => onSetStatus(selected, 'selesai')}
-                      className="flex-1 px-4 py-2 text-sm rounded-xl bg-ink-900 text-sand-100 font-semibold hover:bg-ink-800"
-                    >
-                      Tutup kasus
-                    </button>
-                  </div>
-                )}
-              </div>
+                    </form>
+                  )}
+
+                  {(user.role === 'koas' || user.role === 'spesialis') && selected.status !== 'selesai' && (
+                    <div className="flex gap-2">
+                      {selected.status !== 'pulih' && (
+                        <button
+                          onClick={() => onSetStatus(selected, 'pulih')}
+                          className="flex-1 px-4 py-2 text-sm rounded-lg bg-clay/10 ring-1 ring-clay/20 text-clay font-semibold hover:bg-clay/20 transition-colors"
+                        >
+                          Tandai pulih
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onSetStatus(selected, 'selesai')}
+                        className="flex-1 px-4 py-2 text-sm rounded-lg bg-ink text-paper font-semibold hover:bg-pine transition-colors"
+                      >
+                        Tutup kasus
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </section>
             )}
           </div>
 
           {/* Kolom kanan: daftar kasus */}
           <div className="lg:col-span-3">
-            <div className="rounded-2xl bg-white shadow-sm ring-1 ring-ink-900/5 overflow-hidden">
-              <div className="px-5 py-4 border-b border-ink-900/5 flex items-center justify-between">
-                <span className="text-sm font-semibold text-ink-900">
-                  {roleTitle}{' '}
-                  <span className="ml-1 px-2 py-0.5 rounded-full bg-aqua-500/10 text-aqua-500 text-xs font-medium">
-                    {cases.length}
-                  </span>
+            <section className="rounded-lg bg-white ring-1 ring-line overflow-hidden">
+              <div className="px-5 py-3 border-b border-line flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted">
+                  Daftar kasus
+                  <span className="ml-2 px-1.5 py-0.5 rounded-full bg-pine/10 text-pine">{cases.length}</span>
                 </span>
-                <button onClick={load} className="text-xs text-ink-900/40 hover:text-aqua-500 transition-colors">
-                  Muat ulang
-                </button>
               </div>
 
               {cases.length === 0 ? (
                 <div className="px-5 py-14 text-center">
-                  <p className="font-display text-ink-900/70">Belum ada kasus</p>
-                  <p className="text-sm text-ink-900/40 mt-1">
+                  <p className="font-display font-bold text-ink/70">Belum ada kasus</p>
+                  <p className="text-sm text-muted mt-1">
                     {user.role === 'pasien'
                       ? 'Buka kasus pertama melalui form di samping.'
                       : 'Kasus yang terkait dengan Anda akan muncul di sini.'}
                   </p>
                 </div>
               ) : (
-                <ul className="divide-y divide-ink-900/5">
+                <ul className="divide-y divide-line">
                   {cases.map((c) => (
-                    <li key={c.id} className="px-5 py-4 flex items-center gap-4 group cursor-pointer" onClick={() => open(c)}>
-                      <span className="grid place-items-center w-10 h-10 rounded-full bg-ink-900 text-sand-100 font-display font-700 text-sm shrink-0">
+                    <li key={c.id} className="px-5 py-4 flex items-center gap-4 cursor-pointer hover:bg-mint/40 transition-colors" onClick={() => open(c)}>
+                      <span className="grid place-items-center w-10 h-10 rounded-full bg-ink text-paper font-display font-bold text-sm shrink-0">
                         {c.patient_name.charAt(0).toUpperCase()}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-ink-900 truncate">{c.complaint}</p>
-                        <p className="text-sm text-ink-900/45 truncate">
+                        <p className="font-medium text-ink truncate">{c.complaint}</p>
+                        <p className="text-sm text-muted truncate">
                           {c.patient_name} · {c.koas_name} · {c.supervisor_name}
                         </p>
                       </div>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ring-1 shrink-0 ${STATUS_BADGE[c.status]}`}>
-                        {c.status}
-                      </span>
+                      <Chip tone={STATUS_BADGE[c.status]} label={c.status} />
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
+            </section>
           </div>
         </div>
-      </div>
-    </section>
+      </main>
+    </div>
   )
 }
