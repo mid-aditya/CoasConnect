@@ -32,6 +32,14 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.Check)
 
+		// Kampanye bersifat publik — bisa dilihat tanpa login,
+		// tetapi tetap mengenali user terautentikasi untuk filter ?mine & spesialis.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.OptionalAuth(cfg.JWTSecret))
+			r.Get("/campaigns", campaignHandler.List)
+			r.Get("/campaigns/{id}", campaignHandler.Get)
+		})
+
 		r.Post("/auth/register", authHandler.Register)
 		r.Post("/auth/login", authHandler.Login)
 
@@ -41,11 +49,6 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 
 			r.Get("/auth/me", authHandler.Me)
 			r.Get("/koas", koasHandler.List)
-
-			// Kampanye bisa dilihat semua role terautentikasi (pasien mencari
-			// pasien, koas & spesialis memantau).
-			r.Get("/campaigns", campaignHandler.List)
-			r.Get("/campaigns/{id}", campaignHandler.Get)
 
 			// Hanya dokter koas yang membuat & mengelola kampanye.
 			r.Group(func(r chi.Router) {

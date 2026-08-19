@@ -67,9 +67,9 @@ func TestCampaignFlow(t *testing.T) {
 		return payload["data"].(map[string]any)["token"].(string)
 	}
 
-	// Route kampanye tanpa token harus 401.
-	if status, _ := do("GET", "/api/v1/campaigns", "", ""); status != http.StatusUnauthorized {
-		t.Fatalf("campaigns tanpa token: status %d, ingin 401", status)
+	// Kampanye bersifat publik — tanpa token harus 200.
+	if status, _ := do("GET", "/api/v1/campaigns", "", ""); status != http.StatusOK {
+		t.Fatalf("campaigns tanpa token: status %d, ingin 200", status)
 	}
 
 	// Register pasien → role harus pasien.

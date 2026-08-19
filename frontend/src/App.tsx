@@ -4,7 +4,7 @@ import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import HowItWorks from './components/HowItWorks'
 import Roles from './components/Roles'
-import ApiStatus from './components/ApiStatus'
+import CampaignsSection from './components/CampaignsSection'
 import Dashboard from './components/Dashboard'
 import Login from './components/Login'
 import Footer from './components/Footer'
@@ -18,7 +18,7 @@ function Landing({ user }: { user: User | null }) {
         <Hero />
         <HowItWorks />
         <Roles />
-        <ApiStatus />
+        <CampaignsSection />
       </main>
       <Footer />
     </div>
