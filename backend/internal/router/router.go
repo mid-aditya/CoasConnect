@@ -3,6 +3,7 @@ package router
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,8 +17,10 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.BodyLimit(1 << 20))
 	r.Use(middleware.Logger)
-	r.Use(middleware.CORS([]string{"*"}))
+	r.Use(middleware.CORS(cfg.AllowedOrigins))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -25,25 +28,36 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 	})
 
 	healthHandler := handlers.NewHealthHandler()
-	userHandler := handlers.NewUserHandler(db)
 	authHandler := handlers.NewAuthHandler(db, cfg.JWTSecret, cfg.TokenTTL)
+	campaignHandler := handlers.NewCampaignHandler(db)
+	koasHandler := handlers.NewKoasHandler(db)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.Check)
 
-		r.Post("/auth/register", authHandler.Register)
-		r.Post("/auth/login", authHandler.Login)
+		// Kampanye bersifat publik — bisa dilihat tanpa login,
+		// tetapi tetap mengenali user terautentikasi untuk filter ?mine & spesialis.
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.OptionalAuth(cfg.JWTSecret))
+			r.Get("/campaigns", campaignHandler.List)
+			r.Get("/campaigns/{id}", campaignHandler.Get)
+		})
 
-		// Semua route user butuh autentikasi.
+		r.With(middleware.RateLimit(10, 15*time.Minute)).Post("/auth/register", authHandler.Register)
+		r.With(middleware.RateLimit(10, 15*time.Minute)).Post("/auth/login", authHandler.Login)
+
+		// Route berikut butuh autentikasi.
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(cfg.JWTSecret))
 
-			r.Route("/users", func(r chi.Router) {
-				r.Get("/", userHandler.List)
-				r.Post("/", userHandler.Create)
-				r.Get("/{id}", userHandler.Get)
-				r.Put("/{id}", userHandler.Update)
-				r.Delete("/{id}", userHandler.Delete)
+			r.Get("/auth/me", authHandler.Me)
+			r.Get("/koas", koasHandler.List)
+
+			// Hanya dokter koas yang membuat & mengelola kampanye.
+			r.Group(func(r chi.Router) {
+				r.Use(middleware.RequireRole("koas"))
+				r.Post("/campaigns", campaignHandler.Create)
+				r.Patch("/campaigns/{id}", campaignHandler.Update)
 			})
 		})
 	})

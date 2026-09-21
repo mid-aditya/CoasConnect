@@ -14,11 +14,16 @@ import { StatusBar } from 'expo-status-bar'
 import { login, register, setToken, API_URL } from './api/client'
 import { colors } from './theme'
 
+type RegRole = 'pasien' | 'koas'
+
 export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [role, setRole] = useState<RegRole>('pasien')
+  const [hospital, setHospital] = useState('')
+  const [specialty, setSpecialty] = useState('')
   const [busy, setBusy] = useState(false)
 
   const onSubmit = async () => {
@@ -30,12 +35,16 @@ export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
       Alert.alert('Form belum lengkap', 'Nama wajib diisi untuk registrasi.')
       return
     }
+    if (mode === 'register' && role === 'koas' && !hospital.trim()) {
+      Alert.alert('Form belum lengkap', 'RS tempat koas wajib diisi.')
+      return
+    }
     setBusy(true)
     try {
       const res =
         mode === 'login'
           ? await login(email.trim(), password)
-          : await register(name.trim(), email.trim(), password)
+          : await register(name.trim(), email.trim(), password, role, hospital.trim(), specialty.trim())
       setToken(res.data.token)
       onAuthed()
     } catch (e) {
@@ -60,21 +69,54 @@ export default function AuthScreen({ onAuthed }: { onAuthed: () => void }) {
             <Text style={styles.brand}>
               Coas<Text style={styles.brandAccent}>Connect</Text>
             </Text>
-            <Text style={styles.tagline}>Jaringan komunitas pesisir</Text>
+            <Text style={styles.tagline}>Platform penjaringan pasien untuk dokter koas</Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.title}>{mode === 'login' ? 'Masuk ke jaringan' : 'Daftar ke jaringan'}</Text>
+          <Text style={styles.title}>{mode === 'login' ? 'Masuk' : 'Buat akun'}</Text>
 
           {mode === 'register' && (
-            <TextInput
-              style={styles.input}
-              placeholder="Nama lengkap"
-              placeholderTextColor={colors.inkMuted}
-              value={name}
-              onChangeText={setName}
-            />
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Nama lengkap"
+                placeholderTextColor={colors.inkMuted}
+                value={name}
+                onChangeText={setName}
+              />
+              <View style={styles.roleRow}>
+                {(['pasien', 'koas'] as const).map((r) => (
+                  <Pressable
+                    key={r}
+                    onPress={() => setRole(r)}
+                    style={[styles.roleBtn, role === r && styles.roleBtnActive]}
+                  >
+                    <Text style={[styles.roleBtnText, role === r && styles.roleBtnTextActive]}>
+                      {r === 'pasien' ? 'Pasien' : 'Dokter Koas'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              {role === 'koas' && (
+                <View style={styles.profileRow}>
+                  <TextInput
+                    style={[styles.input, styles.profileInput]}
+                    placeholder="RS tempat bertugas"
+                    placeholderTextColor={colors.inkMuted}
+                    value={hospital}
+                    onChangeText={setHospital}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.profileInput]}
+                    placeholder="Bidang minat"
+                    placeholderTextColor={colors.inkMuted}
+                    value={specialty}
+                    onChangeText={setSpecialty}
+                  />
+                </View>
+              )}
+            </>
           )}
           <TextInput
             style={styles.input}
@@ -140,9 +182,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: 'rgba(34, 199, 176, 0.15)',
+    backgroundColor: 'rgba(46, 125, 91, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(62, 224, 200, 0.4)',
+    borderColor: 'rgba(46, 125, 91, 0.4)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -183,6 +225,39 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.ink900,
     marginBottom: 10,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: 'rgba(22, 36, 29, 0.12)',
+    alignItems: 'center',
+  },
+  roleBtnActive: {
+    backgroundColor: colors.aqua500,
+    borderColor: colors.aqua500,
+  },
+  roleBtnText: {
+    color: colors.ink900,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  roleBtnTextActive: {
+    color: colors.ink950,
+  },
+  profileRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  profileInput: {
+    flex: 1,
   },
   primaryBtn: {
     backgroundColor: colors.aqua500,

@@ -2,12 +2,15 @@
 
 # 🌊 CoasConnect
 
-**Menghubungkan komunitas pesisir dalam satu jaringan.**
+**Menghubungkan pasien dengan dokter koas dalam satu alur perawatan.**
 
 </div>
 
-Monorepo aplikasi CoasConnect — platform konektivitas untuk nelayan, koperasi,
-dan pasar pesisir.
+Monorepo aplikasi CoasConnect — platform penjaringan pasien untuk dokter koas
+(ko-asisten). Dokter koas memasang kampanye berisi kriteria & prosedur, pasien
+menemukannya lewat web atau mobile, lalu dibimbing langsung oleh koas dengan
+supervisi dokter spesialis. Janji temu & tugas koas dialihkan ke WhatsApp —
+platform ini fokus mencari & mendistribusikan pasien.
 
 ## 🏗️ Arsitektur
 
@@ -53,18 +56,31 @@ API tersedia di `http://localhost:8080`.
 | Method | Endpoint          | Fungsi            |
 | ------ | ----------------- | ----------------- |
 | GET    | `/api/v1/health`  | Health check      |
-| POST   | `/api/v1/auth/register` | Daftar akun + terbitkan token JWT |
+| POST   | `/api/v1/auth/register` | Daftar akun **pasien** atau **koas** (RS & bidang) + token JWT |
 | POST   | `/api/v1/auth/login`    | Login + terbitkan token JWT |
-| GET    | `/api/v1/users`   | Daftar user *(butuh token)* |
-| POST   | `/api/v1/users`   | Tambah user *(butuh token)* |
-| GET    | `/api/v1/users/{id}` | Detail user *(butuh token)* |
-| PUT    | `/api/v1/users/{id}` | Ubah user *(butuh token)* |
-| DELETE | `/api/v1/users/{id}` | Hapus user *(butuh token)* |
+| GET    | `/api/v1/auth/me`       | Data user yang login *(butuh token)* |
+| GET    | `/api/v1/koas`    | Daftar dokter koas + profil (RS, bidang, pembimbing) *(butuh token)* |
+| GET    | `/api/v1/campaigns` | Daftar kampanye sesuai peran *(butuh token)* |
+| GET    | `/api/v1/campaigns?mine=true` | Kampanye milik koas yang login *(koas)* |
+| GET    | `/api/v1/campaigns/{id}` | Detail kampanye *(butuh token)* |
+| POST   | `/api/v1/campaigns` | Pasang kampanye baru *(koas)* |
+| PATCH  | `/api/v1/campaigns/{id}` | Ubah kampanye / status aktif-tutup *(koas pemilik)* |
 
-Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel.
+Database SQLite dibuat otomatis (`coasconnect.db`) beserta migrasi tabel dan
+**akun demo** (dibuat saat pertama kali jalan):
 
-> **Autentikasi:** semua endpoint `/users` butuh header `Authorization: Bearer
-> <token>`. Token didapat dari `/auth/register` atau `/auth/login`. Set env
+| Akun | Email | Password | Role |
+| ---- | ----- | -------- | ---- |
+| Pasien | `budi@coasconnect.id` | `pasien1234` | `pasien` |
+| Dokter Koas | `koas@coasconnect.id` | `koas1234` | `koas` |
+| Dokter Koas (2) | `koas2@coasconnect.id` | `koas1234` | `koas` |
+| Dokter Spesialis | `spesialis@coasconnect.id` | `spesialis123` | `spesialis` |
+
+> **Autentikasi & role:** semua endpoint `/campaigns`, `/koas`, `/auth/me`
+> butuh header `Authorization: Bearer <token>`. Token didapat dari
+> `/auth/register` atau `/auth/login`. Registrasi menerima `role`
+> (`pasien` default | `koas`) plus `hospital` & `specialty` untuk koas.
+> Akun `spesialis` dibuat seed (belum ada UI admin). Set env
 > `JWT_SECRET` dengan nilai unik sebelum deploy (default hanya untuk dev).
 
 ### 2. Frontend (React web)
@@ -143,12 +159,13 @@ coasconnect/
 
 ## 🛣️ Roadmap singkat
 
-- [x] Backend Go + SQLite (CRUD user, health check)
-- [x] Autentikasi (JWT) — register/login, route user dilindungi
-- [x] Frontend React (landing + demo CRUD end-to-end)
-- [x] Mobile React Native (Expo) (status API + CRUD)
-- [ ] Autentikasi (JWT)
-- [ ] Fitur domain: harga pasar, logistik, koperasi
+- [x] Backend Go + SQLite (kampanye, role: pasien/koas/spesialis)
+- [x] Autentikasi (JWT) + otorisasi per role (register koas dengan profil RS & bidang)
+- [x] Frontend React (landing + dashboard per role: cari kampanye, kelola kampanye, supervisi)
+- [x] Data demo lengkap (2 koas, 1 pembimbing, 4 pasien, 6 kampanye)
+- [ ] Fitur profiling dokter koas (pembimbing dihubungkan eksplisit)
+- [x] Mobile React Native (Expo): alur pasien melihat & mendaftar kampanye, koas memasang & mengelola kampanye
+- [ ] Deploy (Railway / Render / VPS) + CI/CD
 ---
 
 Dibuat dengan Go · React · React Native · ❤️

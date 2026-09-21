@@ -1,35 +1,78 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
-import ApiStatus from './components/ApiStatus'
-import UserManager from './components/UserManager'
+import HowItWorks from './components/HowItWorks'
+import Roles from './components/Roles'
+import CampaignsSection from './components/CampaignsSection'
+import Dashboard from './components/Dashboard'
 import Login from './components/Login'
-import Features from './components/Features'
 import Footer from './components/Footer'
-import { getToken, setToken } from './api/client'
+import { getMe, setToken, type User } from './api/client'
 
-export default function App() {
-  const [authed, setAuthed] = useState(() => getToken() !== null)
-
+function Landing({ user }: { user: User | null }) {
   return (
-    <div className="min-h-screen bg-sand-100">
-      <Navbar />
+    <div className="min-h-screen bg-paper">
+      <Navbar authed={!!user} />
       <main>
         <Hero />
-        <ApiStatus />
-        {authed ? (
-          <UserManager
-            onLogout={() => {
-              setToken(null)
-              setAuthed(false)
-            }}
-          />
-        ) : (
-          <Login onAuthed={() => setAuthed(true)} />
-        )}
-        <Features />
+        <HowItWorks />
+        <Roles />
+        <CampaignsSection />
       </main>
       <Footer />
     </div>
+  )
+}
+
+export default function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    getMe()
+      .then((res) => setUser(res.data))
+      .catch(() => setUser(null))
+      .finally(() => setChecking(false))
+  }, [])
+
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing user={user} />} />
+        <Route
+          path="/login"
+          element={
+            checking ? null : user ? (
+              <Navigate to="/app" replace />
+            ) : (
+              <Login
+                onAuthed={async () => {
+                  const res = await getMe()
+                  setUser(res.data)
+                }}
+              />
+            )
+          }
+        />
+        <Route
+          path="/app"
+          element={
+            checking ? null : user ? (
+              <Dashboard
+                user={user}
+                onLogout={() => {
+                  setToken(null)
+                  setUser(null)
+                }}
+              />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

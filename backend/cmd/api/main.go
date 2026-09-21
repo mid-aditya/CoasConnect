@@ -11,6 +11,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("konfigurasi tidak aman: %v", err)
+	}
 
 	db, err := database.Open(cfg.DBPath)
 	if err != nil {
@@ -20,6 +23,10 @@ func main() {
 
 	if err := database.Migrate(db); err != nil {
 		log.Fatalf("gagal migrasi database: %v", err)
+	}
+
+	if err := database.Seed(db); err != nil {
+		log.Fatalf("gagal seed database: %v", err)
 	}
 
 	r := router.New(db, cfg)

@@ -1,18 +1,16 @@
 // Klien API untuk backend Go CoasConnect.
 // Selama development, Vite mem-proxy /api ke http://localhost:8080.
 
-// ponytail: token disimpan di localStorage (praktis untuk dev/demo).
-// Saat produksi, pindah ke httpOnly cookie + CSRF agar tak bisa diakses script lain.
-const TOKEN_KEY = 'coasconnect_token'
-
+// Session web disimpan sebagai HttpOnly cookie oleh backend.
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return null
 }
 
-export function setToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+export function setToken(_token: string | null) {
+  // Compatibility no-op: browser tidak menyimpan JWT di JavaScript storage.
 }
+
+export type Role = 'pasien' | 'koas' | 'spesialis'
 
 export interface Health {
   status: string
@@ -25,17 +23,47 @@ export interface User {
   id: number
   name: string
   email: string
+  role: Role
+  supervisor_id?: number
+  hospital: string
+  specialty: string
   created_at: string
   updated_at: string
 }
 
+export interface CampaignView {
+  id: number
+  koas_id: number
+  title: string
+  description: string
+  criteria: string
+  procedure: string
+  specialty: string
+  hospital: string
+  whatsapp: string
+  status: 'aktif' | 'tutup'
+  koas_name: string
+  supervisor_name: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Koas {
+  id: number
+  name: string
+  hospital: string
+  specialty: string
+  supervisor_id?: number
+}
+
 export interface AuthResponse {
-  data: { user: User; token: string }
+  data: { user: User; token?: string }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
   const res = await fetch(path, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -55,10 +83,6 @@ export function getHealth(): Promise<Health> {
   return request<Health>('/api/v1/health')
 }
 
-export function getUsers(): Promise<{ data: User[] }> {
-  return request<{ data: User[] }>('/api/v1/users')
-}
-
 export function login(email: string, password: string): Promise<AuthResponse> {
   return request<AuthResponse>('/api/v1/auth/login', {
     method: 'POST',
@@ -66,20 +90,66 @@ export function login(email: string, password: string): Promise<AuthResponse> {
   })
 }
 
-export function register(name: string, email: string, password: string): Promise<AuthResponse> {
+export function register(
+  name: string,
+  email: string,
+  password: string,
+  role: 'pasien' | 'koas' = 'pasien',
+  hospital = '',
+  specialty = '',
+): Promise<AuthResponse> {
   return request<AuthResponse>('/api/v1/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, role, hospital, specialty }),
   })
 }
 
-export function createUser(input: { name: string; email: string }): Promise<{ data: User }> {
-  return request<{ data: User }>('/api/v1/users', {
+export function getMe(): Promise<{ data: User }> {
+  return request<{ data: User }>('/api/v1/auth/me')
+}
+
+export function getKoas(): Promise<{ data: Koas[] }> {
+  return request<{ data: Koas[] }>('/api/v1/koas')
+}
+
+export function getCampaigns(): Promise<{ data: CampaignView[] }> {
+  return request<{ data: CampaignView[] }>('/api/v1/campaigns')
+}
+
+export function getMyCampaigns(): Promise<{ data: CampaignView[] }> {
+  return request<{ data: CampaignView[] }>('/api/v1/campaigns?mine=true')
+}
+
+export function getCampaign(id: number): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>(`/api/v1/campaigns/${id}`)
+}
+
+export function createCampaign(input: {
+  title: string
+  description: string
+  criteria: string
+  procedure: string
+  whatsapp: string
+}): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>('/api/v1/campaigns', {
     method: 'POST',
     body: JSON.stringify(input),
   })
 }
 
-export function deleteUser(id: number): Promise<{ message: string }> {
-  return request<{ message: string }>(`/api/v1/users/${id}`, { method: 'DELETE' })
+export function updateCampaign(
+  id: number,
+  input: Partial<{
+    title: string
+    description: string
+    criteria: string
+    procedure: string
+    whatsapp: string
+    status: 'aktif' | 'tutup'
+  }>,
+): Promise<{ data: CampaignView }> {
+  return request<{ data: CampaignView }>(`/api/v1/campaigns/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
 }

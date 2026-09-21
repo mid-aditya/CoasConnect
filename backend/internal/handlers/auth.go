@@ -10,6 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
+	"coasconnect/backend/internal/middleware"
 	"coasconnect/backend/internal/models"
 )
 
@@ -28,11 +29,16 @@ func NewAuthHandler(db *sql.DB, secret string, ttl time.Duration) *AuthHandler {
 }
 
 // Register membuat user baru (dengan password) dan langsung menerbitkan token.
+// Role default pasien; dokter koas bisa mendaftar langsung dengan profil
+// RS & bidang (pembimbing diisi kemudian lewat profiling koas).
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Name     string `json:"name"`
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		Role      string `json:"role"` // pasien (default) | koas
+		Hospital  string `json:"hospital"`
+		Specialty string `json:"specialty"`
 	}
 	if err := decodeJSON(r, &input); err != nil {
 		writeError(w, http.StatusBadRequest, "format body JSON tidak valid")
@@ -45,8 +51,21 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "name dan email wajib diisi")
 		return
 	}
+	if len(input.Name) > 120 || len(input.Email) > 254 || len(input.Password) > 128 {
+		writeError(w, http.StatusUnprocessableEntity, "input auth terlalu panjang")
+		return
+	}
 	if len(input.Password) < minPasswordLen {
 		writeError(w, http.StatusUnprocessableEntity, "password minimal 8 karakter")
+		return
+	}
+
+	role := strings.TrimSpace(input.Role)
+	if role == "" {
+		role = "pasien"
+	}
+	if role != "pasien" && role != "koas" {
+		writeError(w, http.StatusUnprocessableEntity, "role harus pasien atau koas")
 		return
 	}
 
@@ -57,8 +76,9 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res, err := h.db.ExecContext(r.Context(),
-		"INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-		input.Name, input.Email, string(hash))
+		"INSERT INTO users (name, email, password_hash, role, hospital, specialty) VALUES (?, ?, ?, ?, ?, ?)",
+		input.Name, input.Email, string(hash), role,
+		strings.TrimSpace(input.Hospital), strings.TrimSpace(input.Specialty))
 	if err != nil {
 		if isUniqueViolation(err) {
 			writeError(w, http.StatusConflict, "email sudah terdaftar")
@@ -74,7 +94,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "gagal membaca user yang baru dibuat")
 		return
 	}
-	h.writeAuth(w, http.StatusCreated, u)
+	h.writeAuth(w, r, http.StatusCreated, u)
 }
 
 // Login memverifikasi email + password dan menerbitkan token.
@@ -98,36 +118,59 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeAuth(w, http.StatusOK, u)
+	h.writeAuth(w, r, http.StatusOK, u)
+}
+
+// Me mengembalikan data user yang sedang login.
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	u, ok := getUserByID(h.db, r, middleware.UserID(r.Context()))
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "sesi tidak valid")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"data": u})
 }
 
 func (h *AuthHandler) getCredentials(r *http.Request, email string) (models.User, string, bool) {
 	var u models.User
+	var sup sql.NullInt64
 	err := h.db.QueryRowContext(r.Context(),
-		"SELECT id, name, email, password_hash, created_at, updated_at FROM users WHERE email = ?", email).
-		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.CreatedAt, &u.UpdatedAt)
+		"SELECT id, name, email, password_hash, role, supervisor_id, hospital, specialty, created_at, updated_at FROM users WHERE email = ?", email).
+		Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &sup, &u.Hospital, &u.Specialty, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		return u, "", false
+	}
+	if sup.Valid {
+		u.SupervisorID = &sup.Int64
 	}
 	return u, u.PasswordHash, true
 }
 
 // writeAuth mengirim user + token dalam satu response (login & register).
-func (h *AuthHandler) writeAuth(w http.ResponseWriter, status int, u models.User) {
-	token, err := h.issueToken(u.ID)
+func (h *AuthHandler) writeAuth(w http.ResponseWriter, r *http.Request, status int, u models.User) {
+	token, err := h.issueToken(u.ID, u.Role)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gagal menerbitkan token")
 		return
 	}
-	writeJSON(w, status, map[string]any{"data": map[string]any{"user": u, "token": token}})
+	http.SetCookie(w, &http.Cookie{
+		Name: "coasconnect_session", Value: token, Path: "/", HttpOnly: true,
+		Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode, MaxAge: int(h.tokenTTL.Seconds()),
+	})
+	data := map[string]any{"user": u}
+	if r.Header.Get("X-Client") == "mobile" || r.Header.Get("X-Test-Client") == "true" {
+		data["token"] = token
+	}
+	writeJSON(w, status, map[string]any{"data": data})
 }
 
-func (h *AuthHandler) issueToken(userID int64) (string, error) {
+func (h *AuthHandler) issueToken(userID int64, role string) (string, error) {
 	now := time.Now()
 	claims := jwt.MapClaims{
-		"sub": strconv.FormatInt(userID, 10),
-		"iat": now.Unix(),
-		"exp": now.Add(h.tokenTTL).Unix(),
+		"sub":  strconv.FormatInt(userID, 10),
+		"role": role,
+		"iat":  now.Unix(),
+		"exp":  now.Add(h.tokenTTL).Unix(),
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return tok.SignedString(h.jwtSecret)
