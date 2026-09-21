@@ -72,6 +72,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      'X-Client': 'mobile',
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
     },
     ...init,

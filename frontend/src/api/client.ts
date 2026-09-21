@@ -1,17 +1,13 @@
 // Klien API untuk backend Go CoasConnect.
 // Selama development, Vite mem-proxy /api ke http://localhost:8080.
 
-// ponytail: token disimpan di localStorage (praktis untuk dev/demo).
-// Saat produksi, pindah ke httpOnly cookie + CSRF agar tak bisa diakses script lain.
-const TOKEN_KEY = 'coasconnect_token'
-
+// Session web disimpan sebagai HttpOnly cookie oleh backend.
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return null
 }
 
-export function setToken(token: string | null) {
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
+export function setToken(_token: string | null) {
+  // Compatibility no-op: browser tidak menyimpan JWT di JavaScript storage.
 }
 
 export type Role = 'pasien' | 'koas' | 'spesialis'
@@ -61,12 +57,13 @@ export interface Koas {
 }
 
 export interface AuthResponse {
-  data: { user: User; token: string }
+  data: { user: User; token?: string }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
   const res = await fetch(path, {
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

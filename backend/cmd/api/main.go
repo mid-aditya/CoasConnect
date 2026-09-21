@@ -11,6 +11,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("konfigurasi tidak aman: %v", err)
+	}
 
 	db, err := database.Open(cfg.DBPath)
 	if err != nil {

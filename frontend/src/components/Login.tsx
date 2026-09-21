@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { login, register, setToken } from '../api/client'
+import { login, register } from '../api/client'
 
 const DEMO_AKUN = [
   ['Dokter Koas', 'koas@coasconnect.id', 'koas1234'],
@@ -37,11 +37,9 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
     }
     setBusy(true)
     try {
-      const res =
-        mode === 'login'
-          ? await login(email.trim(), password)
-          : await register(name.trim(), email.trim(), password, role, hospital.trim(), specialty.trim())
-      setToken(res.data.token)
+      await (mode === 'login'
+        ? login(email.trim(), password)
+        : register(name.trim(), email.trim(), password, role, hospital.trim(), specialty.trim()))
       onAuthed()
       navigate('/app')
     } catch (err) {

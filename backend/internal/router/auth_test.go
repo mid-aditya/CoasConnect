@@ -44,6 +44,7 @@ func TestCampaignFlow(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s %s: build request: %v", method, path, err)
 		}
+		req.Header.Set("X-Test-Client", "true")
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
 		}

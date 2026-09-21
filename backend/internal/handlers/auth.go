@@ -51,6 +51,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "name dan email wajib diisi")
 		return
 	}
+	if len(input.Name) > 120 || len(input.Email) > 254 || len(input.Password) > 128 {
+		writeError(w, http.StatusUnprocessableEntity, "input auth terlalu panjang")
+		return
+	}
 	if len(input.Password) < minPasswordLen {
 		writeError(w, http.StatusUnprocessableEntity, "password minimal 8 karakter")
 		return
@@ -90,7 +94,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "gagal membaca user yang baru dibuat")
 		return
 	}
-	h.writeAuth(w, http.StatusCreated, u)
+	h.writeAuth(w, r, http.StatusCreated, u)
 }
 
 // Login memverifikasi email + password dan menerbitkan token.
@@ -114,7 +118,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeAuth(w, http.StatusOK, u)
+	h.writeAuth(w, r, http.StatusOK, u)
 }
 
 // Me mengembalikan data user yang sedang login.
@@ -143,13 +147,21 @@ func (h *AuthHandler) getCredentials(r *http.Request, email string) (models.User
 }
 
 // writeAuth mengirim user + token dalam satu response (login & register).
-func (h *AuthHandler) writeAuth(w http.ResponseWriter, status int, u models.User) {
+func (h *AuthHandler) writeAuth(w http.ResponseWriter, r *http.Request, status int, u models.User) {
 	token, err := h.issueToken(u.ID, u.Role)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "gagal menerbitkan token")
 		return
 	}
-	writeJSON(w, status, map[string]any{"data": map[string]any{"user": u, "token": token}})
+	http.SetCookie(w, &http.Cookie{
+		Name: "coasconnect_session", Value: token, Path: "/", HttpOnly: true,
+		Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode, MaxAge: int(h.tokenTTL.Seconds()),
+	})
+	data := map[string]any{"user": u}
+	if r.Header.Get("X-Client") == "mobile" || r.Header.Get("X-Test-Client") == "true" {
+		data["token"] = token
+	}
+	writeJSON(w, status, map[string]any{"data": data})
 }
 
 func (h *AuthHandler) issueToken(userID int64, role string) (string, error) {

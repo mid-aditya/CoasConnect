@@ -3,6 +3,7 @@ package router
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,8 +17,10 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Recoverer)
+	r.Use(middleware.SecurityHeaders)
+	r.Use(middleware.BodyLimit(1 << 20))
 	r.Use(middleware.Logger)
-	r.Use(middleware.CORS([]string{"*"}))
+	r.Use(middleware.CORS(cfg.AllowedOrigins))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -40,8 +43,8 @@ func New(db *sql.DB, cfg config.Config) http.Handler {
 			r.Get("/campaigns/{id}", campaignHandler.Get)
 		})
 
-		r.Post("/auth/register", authHandler.Register)
-		r.Post("/auth/login", authHandler.Login)
+		r.With(middleware.RateLimit(10, 15*time.Minute)).Post("/auth/register", authHandler.Register)
+		r.With(middleware.RateLimit(10, 15*time.Minute)).Post("/auth/login", authHandler.Login)
 
 		// Route berikut butuh autentikasi.
 		r.Group(func(r chi.Router) {

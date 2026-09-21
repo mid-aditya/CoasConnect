@@ -128,6 +128,10 @@ func (h *CampaignHandler) Create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnprocessableEntity, "whatsapp wajib diisi (nomor tujuan pasien mendaftar)")
 		return
 	}
+	if len(input.Title) > 200 || len(input.Description) > 4000 || len(input.Criteria) > 2000 || len(input.Procedure) > 4000 || len(input.Specialty) > 120 || len(input.Hospital) > 200 || len(input.Whatsapp) > 32 {
+		writeError(w, http.StatusUnprocessableEntity, "input kampanye terlalu panjang")
+		return
+	}
 
 	// Fallback RS & bidang dari profil koas.
 	if input.Hospital == "" || input.Specialty == "" {

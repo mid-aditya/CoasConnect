@@ -8,7 +8,7 @@ import CampaignsSection from './components/CampaignsSection'
 import Dashboard from './components/Dashboard'
 import Login from './components/Login'
 import Footer from './components/Footer'
-import { getMe, getToken, setToken, type User } from './api/client'
+import { getMe, setToken, type User } from './api/client'
 
 function Landing({ user }: { user: User | null }) {
   return (
@@ -30,13 +30,9 @@ export default function App() {
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    if (!getToken()) {
-      setChecking(false)
-      return
-    }
     getMe()
       .then((res) => setUser(res.data))
-      .catch(() => setToken(null))
+      .catch(() => setUser(null))
       .finally(() => setChecking(false))
   }, [])
 

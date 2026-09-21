@@ -21,13 +21,13 @@ const (
 func Auth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			hdr := r.Header.Get("Authorization")
-			if !strings.HasPrefix(hdr, "Bearer ") {
+			tokString := tokenFromRequest(r)
+			if tokString == "" {
 				writeUnauthorized(w)
 				return
 			}
 
-			tok, err := jwt.Parse(strings.TrimPrefix(hdr, "Bearer "), func(t *jwt.Token) (any, error) {
+			tok, err := jwt.Parse(tokString, func(t *jwt.Token) (any, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, errors.New("metode signing tidak dikenal")
 				}
@@ -75,18 +75,29 @@ func UserRole(ctx context.Context) string {
 	return role
 }
 
+func tokenFromRequest(r *http.Request) string {
+	if cookie, err := r.Cookie("coasconnect_session"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+	hdr := r.Header.Get("Authorization")
+	if strings.HasPrefix(hdr, "Bearer ") {
+		return strings.TrimPrefix(hdr, "Bearer ")
+	}
+	return ""
+}
+
 // OptionalAuth seperti Auth, tapi tidak menolak jika token tidak ada.
 // Berguna untuk route publik yang tetap ingin mengenali user terautentikasi.
 func OptionalAuth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			hdr := r.Header.Get("Authorization")
-			if !strings.HasPrefix(hdr, "Bearer ") {
+			tokString := tokenFromRequest(r)
+			if tokString == "" {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			tok, err := jwt.Parse(strings.TrimPrefix(hdr, "Bearer "), func(t *jwt.Token) (any, error) {
+			tok, err := jwt.Parse(tokString, func(t *jwt.Token) (any, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, errors.New("metode signing tidak dikenal")
 				}
